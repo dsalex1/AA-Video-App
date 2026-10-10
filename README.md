@@ -46,7 +46,7 @@ Android Auto hides apps that weren't installed from the Play Store, so there are
    `keytool -genkey -v -keystore release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload`
 2. Add these repository secrets: `SIGNING_KEYSTORE_BASE64` (`base64 -w0 release.jks`),
    `SIGNING_STORE_PASSWORD`, `SIGNING_KEY_ALIAS`, `SIGNING_KEY_PASSWORD`.
-3. Create the app in Play Console (package `de.purlife.akademieauto`). Upload the **first** AAB by hand
+3. Create the app in Play Console (package `de.dsalex.akademieauto`). Upload the **first** AAB by hand
    from the `akademie-auto-release-aab` artifact to Testing → Internal testing, and add testers' emails.
 4. Optional automation: create a service account with release permissions, store its JSON key as
    `PLAY_SERVICE_ACCOUNT_JSON`, then run the workflow manually with "Upload to Play" checked.

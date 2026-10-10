@@ -8,7 +8,8 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "de.purlife.akademieauto"
+        // Published ID (permanent on Play); the Kotlin package / namespace above is internal only.
+        applicationId = "de.dsalex.akademieauto"
         minSdk = 26
         targetSdk = 35
         // CI passes the run number so every upload to Play gets a fresh versionCode.
