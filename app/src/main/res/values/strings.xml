@@ -2,4 +2,5 @@
 <resources>
     <string name="app_name">Akademie Auto</string>
     <string name="switch_to">→ %1$s</string>
+    <string name="skip_silence">⏩ Skip Silence</string>
 </resources>

@@ -15,6 +15,8 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.webkit.ServiceWorkerClientCompat
+import androidx.webkit.ServiceWorkerControllerCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import java.text.SimpleDateFormat
@@ -64,8 +66,16 @@ object Web {
             setAcceptCookie(true)
             setAcceptThirdPartyCookies(webView, true) // Vimeo embeds run in a third-party iframe
         }
+        val context = webView.context
+        webView.addJavascriptInterface(MediaHub.JsBridge, "AAMedia")
+        webView.addJavascriptInterface(SkipSilence.bridge(context), "AASkip")
+        MediaHub.register(webView)
+        interceptServiceWorkers(context)
         if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
-            WebViewCompat.addDocumentStartJavaScript(webView, ALWAYS_VISIBLE_JS, setOf("*"))
+            // Injected into every frame, embedded players included.
+            for (script in listOf(ALWAYS_VISIBLE_JS, MEDIA_JS, SkipSilence.contentScript(context))) {
+                WebViewCompat.addDocumentStartJavaScript(webView, script, setOf("*"))
+            }
         } else {
             DiagLog.add("document-start scripts unsupported, background playback may pause")
         }
@@ -74,6 +84,9 @@ object Web {
             override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
                 DiagLog.add("page $url")
             }
+
+            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest) =
+                SkipSilence.intercept(context, request)
 
             override fun onPageFinished(view: WebView, url: String?) {
                 CookieManager.getInstance().flush()
@@ -88,6 +101,25 @@ object Web {
             override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, response: WebResourceResponse) {
                 DiagLog.add("http ${response.statusCode} ${frame(request)} ${request.url}")
             }
+        }
+    }
+
+    private var serviceWorkersIntercepted = false
+
+    /** Requests made by a site's service worker (YouTube has one) bypass the WebViewClient. */
+    private fun interceptServiceWorkers(context: Context) {
+        if (serviceWorkersIntercepted ||
+            !WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_BASIC_USAGE) ||
+            !WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_SHOULD_INTERCEPT_REQUEST)
+        ) return
+        serviceWorkersIntercepted = true
+        try {
+            ServiceWorkerControllerCompat.getInstance().setServiceWorkerClient(object : ServiceWorkerClientCompat() {
+                override fun shouldInterceptRequest(request: WebResourceRequest) =
+                    SkipSilence.intercept(context, request)
+            })
+        } catch (e: Throwable) {
+            DiagLog.add("service worker interception unavailable: $e")
         }
     }
 
@@ -137,6 +169,62 @@ object Web {
     document.addEventListener(t, block, true);
   });
   window.addEventListener('blur', function (e) { if (e.target === window) e.stopImmediatePropagation(); }, true);
+})();
+"""
+
+    /**
+     * Reports the playing media element of each frame to [MediaHub] and executes its play/pause/seek commands.
+     * Commands go to the main frame, which relays them to all child frames; only the addressed frame acts.
+     */
+    const val MEDIA_JS = """
+(function () {
+  if (window.__aaMediaFrame || typeof AAMedia === 'undefined') return;
+  var id = Math.random().toString(36).slice(2);
+  window.__aaMediaFrame = id;
+  var current = null;
+  function meta(field) {
+    var m = navigator.mediaSession && navigator.mediaSession.metadata;
+    return (m && m[field]) || '';
+  }
+  function report() {
+    var el = current;
+    if (!el) return;
+    AAMedia.update(id, JSON.stringify({
+      playing: !el.paused && !el.ended,
+      title: meta('title') || document.title || '',
+      artist: meta('artist') || location.hostname.replace(/^www\./, ''),
+      position: el.currentTime || 0,
+      duration: isFinite(el.duration) ? el.duration : 0
+    }));
+  }
+  ['play', 'playing', 'pause', 'ended', 'seeked', 'loadedmetadata'].forEach(function (type) {
+    document.addEventListener(type, function (e) {
+      var el = e.target;
+      if (!(el instanceof HTMLMediaElement)) return;
+      if (type === 'play' || type === 'playing' || !current) current = el;
+      if (el === current) report();
+    }, true);
+  });
+  setInterval(function () { if (current && !current.paused) report(); }, 5000);
+  function act(command) {
+    var el = current;
+    if (!el) return;
+    if (command === 'play') el.play();
+    else if (command === 'pause') el.pause();
+    else if (command.indexOf('skip:') === 0) el.currentTime = Math.max(0, el.currentTime + parseFloat(command.slice(5)));
+    else if (command.indexOf('seek:') === 0) el.currentTime = parseFloat(command.slice(5));
+  }
+  function dispatch(target, command) {
+    if (target === id) act(command);
+    for (var i = 0; i < window.frames.length; i++) {
+      try { window.frames[i].postMessage({ __aaMedia: [target, command] }, '*'); } catch (e) {}
+    }
+  }
+  window.addEventListener('message', function (e) {
+    var d = e.data && e.data.__aaMedia;
+    if (Array.isArray(d)) dispatch(d[0], d[1]);
+  });
+  window.__aaMedia = dispatch;
 })();
 """
 

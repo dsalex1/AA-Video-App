@@ -56,6 +56,7 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.9.3")
     implementation("androidx.lifecycle:lifecycle-common-java8:2.8.7")
     implementation("androidx.webkit:webkit:1.12.1")
+    implementation("androidx.media:media:1.7.0")
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
 
     testImplementation("junit:junit:4.13.2")

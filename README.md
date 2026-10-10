@@ -20,6 +20,12 @@ videos, parked or driving (intended for passengers).
 - Pages always see themselves as visible, and a foreground service keeps the app alive, so YouTube and
   Vimeo keep playing in the background / with the screen off.
 - Pull down on the phone to reload the page.
+- Media notification / lock-screen controls (title, play/pause, −10 s / +30 s, seek bar) for whatever plays in any
+  page or embedded player; also reacts to headset and steering-wheel media buttons.
+- **Skip Silence**: the [Skip Silence](https://github.com/vantezzen/skip-silence) browser extension (MIT) runs in
+  every page and embedded player. Its settings popup opens from the "⏩ Skip Silence" button (phone) or the ⏩ action
+  (car). Source is vendored in `skip-silence/upstream`; `skip-silence/android` replaces the extension APIs with
+  the app's `AASkip` bridge. Rebuild the bundles in `app/src/main/assets/skipsilence` with `skip-silence/build.sh`.
 - Troubleshooting: long-press the switch button on the phone to view/share a log of page errors.
 - **Log in once in the phone app** (there's no keyboard on the car). Cookies are shared, so the car
   side is logged in too.

@@ -21,6 +21,7 @@ class CarPresentation(outerContext: Context, display: Display, private val initi
     lateinit var webView: WebView
         private set
 
+    private var settingsView: WebView? = null
     private var customView: View? = null
     private var customViewCallback: android.webkit.WebChromeClient.CustomViewCallback? = null
 
@@ -80,7 +81,29 @@ class CarPresentation(outerContext: Context, display: Display, private val initi
     }
 
     fun scrollBy(dx: Float, dy: Float) {
-        if (customView == null) webView.scrollBy(dx.toInt(), dy.toInt())
+        val settings = settingsView
+        when {
+            settings != null -> settings.scrollBy(dx.toInt(), dy.toInt())
+            customView == null -> webView.scrollBy(dx.toInt(), dy.toInt())
+        }
+    }
+
+    /** Shows/hides the Skip Silence settings popup on top of the page. */
+    fun toggleSkipSilenceSettings() {
+        val open = settingsView
+        if (open != null) {
+            root.removeView(open)
+            SkipSilence.closeSettings(open)
+            settingsView = null
+            return
+        }
+        SkipSilence.pageUrl = webView.url
+        val view = SkipSilence.createSettingsView(context)
+        val density = context.resources.displayMetrics.density
+        root.addView(view, FrameLayout.LayoutParams((356 * density).toInt(), ViewGroup.LayoutParams.MATCH_PARENT).apply {
+            gravity = android.view.Gravity.CENTER_HORIZONTAL
+        })
+        settingsView = view
     }
 
     fun exitFullscreen(): Boolean {
@@ -90,6 +113,7 @@ class CarPresentation(outerContext: Context, display: Display, private val initi
     }
 
     fun destroy() {
+        settingsView?.let(SkipSilence::closeSettings)
         webView.destroy()
         dismiss()
     }

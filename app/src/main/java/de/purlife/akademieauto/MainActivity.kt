@@ -2,6 +2,7 @@ package de.purlife.akademieauto
 
 import android.Manifest
 import android.app.AlertDialog
+import android.app.Dialog
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
@@ -10,10 +11,12 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.widget.Button
 import android.widget.FrameLayout
+import android.widget.LinearLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
@@ -33,6 +36,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var webView: WebView
     private lateinit var refresh: SwipeRefreshLayout
     private lateinit var switchButton: Button
+    private lateinit var buttonRow: LinearLayout
     private lateinit var site: Site
     private var customView: View? = null
     private var customViewCallback: android.webkit.WebChromeClient.CustomViewCallback? = null
@@ -57,26 +61,27 @@ class MainActivity : ComponentActivity() {
         root.addView(refresh, matchParent())
 
         val density = resources.displayMetrics.density
-        switchButton = Button(this).apply {
-            setTextColor(Color.WHITE)
-            isAllCaps = false
-            background = GradientDrawable().apply {
-                setColor(0xCC000000.toInt())
-                cornerRadius = 24 * density
-            }
-            setOnClickListener {
-                site = site.other
-                Site.save(this@MainActivity, site)
-                updateSwitchLabel()
-                webView.loadUrl(site.homeUrl)
-            }
+        switchButton = pillButton {
+            site = site.other
+            Site.save(this@MainActivity, site)
+            updateSwitchLabel()
+            webView.loadUrl(site.homeUrl)
+        }.apply {
             setOnLongClickListener {
                 showDiagnostics()
                 true
             }
         }
+        val skipSilenceButton = pillButton { showSkipSilenceSettings() }.apply { setText(R.string.skip_silence) }
+        buttonRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            addView(switchButton)
+            addView(skipSilenceButton, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { marginStart = (8 * density).toInt() })
+        }
         root.addView(
-            switchButton,
+            buttonRow,
             FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                 gravity = Gravity.BOTTOM or Gravity.START
                 val margin = (16 * density).toInt()
@@ -103,7 +108,7 @@ class MainActivity : ComponentActivity() {
                 customViewCallback = callback
                 root.addView(view, matchParent())
                 refresh.visibility = View.GONE
-                switchButton.visibility = View.GONE
+                buttonRow.visibility = View.GONE
                 applyFullscreen(true)
             }
 
@@ -164,6 +169,30 @@ class MainActivity : ComponentActivity() {
         ViewCompat.requestApplyInsets(root)
     }
 
+    private fun pillButton(onClick: () -> Unit) = Button(this).apply {
+        setTextColor(Color.WHITE)
+        isAllCaps = false
+        background = GradientDrawable().apply {
+            setColor(0xCC000000.toInt())
+            cornerRadius = 24 * resources.displayMetrics.density
+        }
+        setOnClickListener { onClick() }
+    }
+
+    /** The Skip Silence extension's own settings popup, for the page currently shown. */
+    private fun showSkipSilenceSettings() {
+        SkipSilence.pageUrl = webView.url
+        val view = SkipSilence.createSettingsView(this)
+        val density = resources.displayMetrics.density
+        val dialog = Dialog(this).apply {
+            requestWindowFeature(Window.FEATURE_NO_TITLE)
+            setContentView(view)
+            setOnDismissListener { SkipSilence.closeSettings(view) }
+        }
+        dialog.show()
+        dialog.window?.setLayout((356 * density).toInt(), (560 * density).toInt())
+    }
+
     private fun showDiagnostics() {
         val log = DiagLog.dump().ifEmpty { "(leer)" }
         AlertDialog.Builder(this)
@@ -186,7 +215,7 @@ class MainActivity : ComponentActivity() {
         customView = null
         customViewCallback = null
         refresh.visibility = View.VISIBLE
-        switchButton.visibility = View.VISIBLE
+        buttonRow.visibility = View.VISIBLE
         applyFullscreen(false)
     }
 

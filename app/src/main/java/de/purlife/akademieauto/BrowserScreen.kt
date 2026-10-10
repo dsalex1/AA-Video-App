@@ -23,6 +23,7 @@ class BrowserScreen(carContext: CarContext) : Screen(carContext) {
         lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onCreate(owner: LifecycleOwner) {
                 carContext.getCarService(AppManager::class.java).setSurfaceCallback(renderer)
+                PlaybackService.start(carContext)
             }
 
             override fun onDestroy(owner: LifecycleOwner) {
@@ -36,7 +37,7 @@ class BrowserScreen(carContext: CarContext) : Screen(carContext) {
         val actionStrip = ActionStrip.Builder()
             .addAction(iconAction(R.drawable.ic_back) { renderer.goBack() })
             .addAction(iconAction(R.drawable.ic_home) { renderer.loadHome() })
-            .addAction(iconAction(R.drawable.ic_reload) { renderer.reload() })
+            .addAction(iconAction(R.drawable.ic_forward) { renderer.toggleSkipSilenceSettings() })
             .addAction(
                 // Labelled with the site it switches to.
                 Action.Builder()

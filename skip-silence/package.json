@@ -1,0 +1,19 @@
+{
+  "name": "aa-skip-silence",
+  "private": true,
+  "type": "module",
+  "description": "Skip Silence (github.com/vantezzen/skip-silence) built for the Android app's WebViews",
+  "scripts": { "build": "./build.sh" },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.3.2",
+    "@vitejs/plugin-react": "^5.0.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.23.0",
+    "radix-ui": "^1.6.1",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.3.2",
+    "vite": "^7.0.0"
+  }
+}

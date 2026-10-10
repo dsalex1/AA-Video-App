@@ -74,12 +74,12 @@ class WebSurfaceRenderer(private val context: Context) : SurfaceCallback {
         loadHome()
     }
 
-    fun toggleFullscreen() {
-        presentation?.toggleFullscreen()
+    fun toggleSkipSilenceSettings() {
+        presentation?.toggleSkipSilenceSettings()
     }
 
-    fun reload() {
-        presentation?.webView?.reload()
+    fun toggleFullscreen() {
+        presentation?.toggleFullscreen()
     }
 
     fun scrollPage(direction: Int) {
