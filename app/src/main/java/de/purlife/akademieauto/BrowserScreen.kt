@@ -42,16 +42,12 @@ class BrowserScreen(carContext: CarContext) : Screen(carContext) {
         val actions = ActionStrip.Builder()
             .addAction(iconAction(R.drawable.ic_forward) { renderer.toggleSkipSilenceSettings() })
         if (!renderer.fullscreen) {
-            actions.addAction(
-                // Labelled with the site it switches to.
-                Action.Builder()
-                    .setTitle(renderer.site.other.label)
-                    .setOnClickListener {
-                        renderer.switchSite()
-                        invalidate()
-                    }
-                    .build()
-            )
+            // Shows the site it switches to, like the phone's button.
+            val target = if (renderer.site.other == Site.YOUTUBE) R.drawable.ic_site_youtube else R.drawable.ic_site_akademie
+            actions.addAction(iconAction(target) {
+                renderer.switchSite()
+                invalidate()
+            })
         }
         return NavigationTemplate.Builder()
             .setActionStrip(actions.build())
