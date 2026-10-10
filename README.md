@@ -35,7 +35,9 @@ videos, parked or driving (intended for passengers).
 
 Android Auto hides apps that weren't installed from the Play Store, so there are two options:
 
-### A) Sideload (quickest, for your own phone)
+### A) Sideload (phone features and testing only)
+Android Auto rejects sideloaded car apps in real cars (it only allows them with Google's Desktop Head
+Unit emulator), so this route gives you the phone app but not the car screen.
 1. Download `akademie-auto-debug-apk` from the latest GitHub Actions run and install it on the phone.
 2. Android Auto settings → tap **Version** ~10× → developer mode on → ⋮ → **Developer settings** →
    enable **Unknown sources**.
