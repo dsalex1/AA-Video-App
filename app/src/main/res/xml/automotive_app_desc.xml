@@ -1,10 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Sideloaded ("Unknown sources") template apps only show up in Android Auto's launcher when they also declare
-  "notification"; "template" alone is hidden (verified on AA with a Galaxy Z Fold5). AAAD does the same.
-  Don't install with `adb install -i com.android.vending`: AA then treats the app as a Play app and hides it.
--->
 <automotiveApp>
     <uses name="template" />
-    <uses name="notification" />
 </automotiveApp>

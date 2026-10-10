@@ -36,8 +36,7 @@ videos, parked or driving (intended for passengers).
 Android Auto hides apps that weren't installed from the Play Store, so there are two options:
 
 ### A) Sideload (quickest, for your own phone)
-1. Download `akademie-auto-debug-apk` from the latest GitHub Actions run and install it on the phone
-   (tap the APK or plain `adb install`; don't fake the Play installer with `-i com.android.vending`).
+1. Download `akademie-auto-debug-apk` from the latest GitHub Actions run and install it on the phone.
 2. Android Auto settings → tap **Version** ~10× → developer mode on → ⋮ → **Developer settings** →
    enable **Unknown sources**.
 3. In Android Auto → Customise launcher, enable "Akademie Auto".
