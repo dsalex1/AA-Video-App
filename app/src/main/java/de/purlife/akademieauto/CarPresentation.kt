@@ -28,7 +28,7 @@ class CarPresentation(outerContext: Context, display: Display, private val initi
         super.onCreate(savedInstanceState)
         root = FrameLayout(context).apply { setBackgroundColor(Color.BLACK) }
         content = FrameLayout(context)
-        webView = WebView(context)
+        webView = BackgroundWebView(context)
         content.addView(webView, matchParent())
         root.addView(content, matchParent())
         setContentView(root)

@@ -159,6 +159,7 @@ object Web {
       }
     });
   }, { rootMargin: '300px' });
+  var PLACEHOLDER = 'https://player.vimeo.com/robots.txt';
   var pairs = [];
   function scan() {
     pairs = pairs.filter(function (p) {
@@ -174,7 +175,9 @@ object Web {
       f.dataset.aaSrc = f.src;
       var r = f.getBoundingClientRect();
       var onScreen = r.width > 0 && r.height > 0 && r.bottom > -300 && r.top < innerHeight + 300;
-      if (!onScreen) f.setAttribute('src', 'about:blank');
+      // The site's Vimeo SDK requires a vimeo.com src (it throws otherwise), so park off-screen players on a
+      // tiny Vimeo URL instead of about:blank.
+      if (!onScreen) f.setAttribute('src', PLACEHOLDER);
       io.observe(f);
       var b = document.createElement('button');
       b.textContent = '\u2197 Direkt \u00F6ffnen';

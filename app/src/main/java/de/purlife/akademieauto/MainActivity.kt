@@ -48,7 +48,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         site = Site.load(this)
         root = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
-        webView = WebView(this)
+        webView = BackgroundWebView(this)
         refresh = SwipeRefreshLayout(this).apply {
             addView(webView, matchParent())
             setOnChildScrollUpCallback { _, _ -> webView.scrollY > 0 || pageScrolled }
