@@ -207,10 +207,10 @@ object Web {
   });
   setInterval(function () { if (current && !current.paused) report(); }, 5000);
   // Stills of the playing video for the media session's album art (Android Auto shows that while driving).
-  // Portrait 4:5 like Android Auto's media card on an 800x480 screen; the square player only crops the bars.
+  // Square: Android Auto's full player shows the art in a square box (about 192 px on an 800x480 screen) and only
+  // shrinks other shapes to fit. Zoom > 1 then fills more of that square.
   var canvas = document.createElement('canvas');
-  canvas.width = 384;
-  canvas.height = 480;
+  canvas.width = canvas.height = 480;
   setInterval(function () {
     var el = current;
     if (!(el instanceof HTMLVideoElement) || el.paused || !el.videoWidth) return;
