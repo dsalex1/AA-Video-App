@@ -13,9 +13,12 @@ import android.view.ViewGroup
 import android.webkit.WebView
 import android.widget.FrameLayout
 
-/** The web page, rendered onto the car's virtual display. */
+/**
+ * The web page, rendered onto the car's virtual display. Dark theme, so pages see prefers-color-scheme: dark
+ * (YouTube goes dark).
+ */
 class CarPresentation(outerContext: Context, display: Display, private val initialSite: Site) :
-    Presentation(outerContext, display) {
+    Presentation(outerContext, display, android.R.style.Theme_Material_NoActionBar_Fullscreen) {
     private lateinit var root: FrameLayout
     private lateinit var content: FrameLayout
     lateinit var webView: WebView
