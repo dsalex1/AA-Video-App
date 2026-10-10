@@ -126,8 +126,14 @@ class PlaybackService : Service() {
             .build()
     }
 
+    /** Brings the running app back to the front, like tapping its launcher icon (no reload). */
     private fun openAppIntent() = PendingIntent.getActivity(
-        this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE
+        this, 0,
+        Intent(this, MainActivity::class.java)
+            .setAction(Intent.ACTION_MAIN)
+            .addCategory(Intent.CATEGORY_LAUNCHER)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED),
+        PendingIntent.FLAG_IMMUTABLE,
     )
 
     private fun serviceIntent(action: String) = PendingIntent.getService(
