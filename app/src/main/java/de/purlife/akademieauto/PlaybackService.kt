@@ -98,8 +98,12 @@ class PlaybackService : MediaBrowserServiceCompat() {
         val media = MediaHub.current
         session.setMetadata(
             MediaMetadataCompat.Builder()
-                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, media?.title?.ifBlank { null } ?: getString(R.string.app_name))
-                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, media?.artist ?: "")
+                .putString(
+                    MediaMetadataCompat.METADATA_KEY_TITLE,
+                    // A space, since an empty title makes Android Auto fall back to the app name.
+                    if (MediaHub.hideCarText) " " else media?.title?.ifBlank { null } ?: getString(R.string.app_name),
+                )
+                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, if (MediaHub.hideCarText) "" else media?.artist ?: "")
                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, media?.durationMs ?: 0)
                 .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, MediaHub.still)
                 .build()

@@ -207,19 +207,22 @@ object Web {
   });
   setInterval(function () { if (current && !current.paused) report(); }, 5000);
   // Stills of the playing video for the media session's album art (Android Auto shows that while driving).
+  // Portrait 4:5 like Android Auto's media card on an 800x480 screen; the square player only crops the bars.
   var canvas = document.createElement('canvas');
-  canvas.width = canvas.height = 480;
+  canvas.width = 384;
+  canvas.height = 480;
   setInterval(function () {
     var el = current;
     if (!(el instanceof HTMLVideoElement) || el.paused || !el.videoWidth) return;
     // Zoom > 1 crops the sides so the picture fills more of Android Auto's square art box.
-    var size = canvas.width, scale = size / Math.max(el.videoWidth, el.videoHeight) * AAMedia.zoom();
+    var W = canvas.width, H = canvas.height;
+    var scale = Math.min(W / el.videoWidth, H / el.videoHeight) * AAMedia.zoom();
     var w = el.videoWidth * scale, h = el.videoHeight * scale;
     var g = canvas.getContext('2d');
     g.fillStyle = '#000';
-    g.fillRect(0, 0, size, size);
+    g.fillRect(0, 0, W, H);
     try {
-      g.drawImage(el, (size - w) / 2, (size - h) / 2, w, h);
+      g.drawImage(el, (W - w) / 2, (H - h) / 2, w, h);
       AAMedia.frame(id, canvas.toDataURL('image/jpeg', 0.7));
     } catch (e) {} // a cross-origin video without CORS taints the canvas
   }, 1000);

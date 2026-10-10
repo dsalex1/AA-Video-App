@@ -20,6 +20,7 @@ import android.widget.LinearLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.car.app.connection.CarConnection
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -73,10 +74,23 @@ class MainActivity : ComponentActivity() {
             }
         }
         val skipSilenceButton = pillButton { showSkipSilenceSettings() }.apply { setText(R.string.skip_silence) }
+        // Only useful while Android Auto shows the video as album art.
+        val carTextButton = pillButton {}.apply {
+            fun label() { text = if (MediaHub.hideCarText) "Auto-Text an" else "Auto-Text aus" }
+            label()
+            setOnClickListener { MediaHub.toggleCarText(); label() }
+            visibility = View.GONE
+        }
+        CarConnection(this).type.observe(this) { type ->
+            carTextButton.visibility = if (type == CarConnection.CONNECTION_TYPE_PROJECTION) View.VISIBLE else View.GONE
+        }
         buttonRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             addView(switchButton)
             addView(skipSilenceButton, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { marginStart = (8 * density).toInt() })
+            addView(carTextButton, LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply { marginStart = (8 * density).toInt() })
         }

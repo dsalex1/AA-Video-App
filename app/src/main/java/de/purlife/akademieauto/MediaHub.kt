@@ -40,6 +40,15 @@ object MediaHub {
     var zoom = ZOOMS[0]
         private set
 
+    /** Blank title/artist in the media session, so Android Auto's text doesn't cover the picture. */
+    var hideCarText = false
+        private set
+
+    fun toggleCarText() {
+        hideCarText = !hideCarText
+        listeners.toList().forEach { it() }
+    }
+
     fun nextZoom() {
         zoom = ZOOMS[(ZOOMS.indexOf(zoom) + 1) % ZOOMS.size]
     }
