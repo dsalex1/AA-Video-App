@@ -54,19 +54,10 @@ class CarPresentation(outerContext: Context, display: Display, private val initi
         webView.loadUrl(initialSite.homeUrl)
     }
 
-    /** Insets so page content isn't hidden behind the Android Auto action strips. */
-    fun setInsets(left: Int, top: Int, right: Int, bottom: Int) {
-        content.setPadding(left, top, right, bottom)
-    }
-
-    fun loadSite(site: Site) {
-        exitFullscreen()
-        webView.loadUrl(site.homeUrl)
-    }
-
-    /** Leaves the page's own fullscreen if active, otherwise toggles our full-screen video styling. */
-    fun toggleFullscreen() {
-        if (!exitFullscreen()) webView.evaluateJavascript(Web.TOGGLE_FULLSCREEN_JS, null)
+    /** Our full-screen video styling (see [Web.fullscreenJs]); off also leaves the page's own fullscreen. */
+    fun setVideoFullscreen(on: Boolean, key: String? = null) {
+        if (!on) exitFullscreen()
+        webView.evaluateJavascript(Web.fullscreenJs(on, key), null)
     }
 
     fun tap(x: Float, y: Float) {

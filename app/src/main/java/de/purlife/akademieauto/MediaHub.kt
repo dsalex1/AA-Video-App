@@ -23,6 +23,8 @@ object MediaHub {
         val artist: String,
         val positionMs: Long,
         val durationMs: Long,
+        /** Which video this is, the same in the phone's and the car's WebView (see [Web.MEDIA_JS]). */
+        val key: String,
         val updatedAt: Long,
     )
 
@@ -93,6 +95,7 @@ object MediaHub {
                 artist = o.optString("artist"),
                 positionMs = (o.optDouble("position", 0.0) * 1000).toLong(),
                 durationMs = (o.optDouble("duration", 0.0) * 1000).toLong(),
+                key = o.optString("key"),
                 updatedAt = SystemClock.elapsedRealtime(),
             )
             main.post { onUpdate(state) }

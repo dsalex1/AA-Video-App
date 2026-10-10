@@ -48,7 +48,7 @@ object Web {
     private const val TAG = "Web"
 
     @SuppressLint("SetJavaScriptEnabled")
-    fun configure(webView: WebView, onPageFinished: (() -> Unit)? = null) {
+    fun configure(webView: WebView, onUrlChanged: ((String) -> Unit)? = null, onPageFinished: (() -> Unit)? = null) {
         if (webView.context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) {
             WebView.setWebContentsDebuggingEnabled(true) // chrome://inspect from a computer
         }
@@ -92,6 +92,11 @@ object Web {
                 CookieManager.getInstance().flush()
                 view.evaluateJavascript(VIMEO_HELPER_JS, null)
                 onPageFinished?.invoke()
+            }
+
+            // Also fires for in-page navigation (history.pushState), which YouTube uses.
+            override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
+                if (url != null) onUrlChanged?.invoke(url)
             }
 
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
@@ -182,6 +187,10 @@ object Web {
   var id = Math.random().toString(36).slice(2);
   window.__aaMediaFrame = id;
   var current = null;
+  // Identifies the video across the phone's and the car's WebView: YouTube's v= or the player path (Vimeo).
+  function key() {
+    return (/youtube\./.test(location.hostname) ? new URLSearchParams(location.search).get('v') : location.pathname) || '';
+  }
   function meta(field) {
     var m = navigator.mediaSession && navigator.mediaSession.metadata;
     return (m && m[field]) || '';
@@ -194,7 +203,8 @@ object Web {
       title: meta('title') || document.title || '',
       artist: meta('artist') || location.hostname.replace(/^www\./, ''),
       position: el.currentTime || 0,
-      duration: isFinite(el.duration) ? el.duration : 0
+      duration: isFinite(el.duration) ? el.duration : 0,
+      key: key()
     }));
   }
   ['play', 'playing', 'pause', 'ended', 'seeked', 'loadedmetadata'].forEach(function (type) {
@@ -214,7 +224,6 @@ object Web {
   setInterval(function () {
     var el = current;
     if (!(el instanceof HTMLVideoElement) || el.paused || !el.videoWidth) return;
-    // Zoom > 1 crops the sides so the picture fills more of Android Auto's square art box.
     var W = canvas.width, H = canvas.height;
     var scale = Math.min(W / el.videoWidth, H / el.videoHeight) * AAMedia.zoom();
     var w = el.videoWidth * scale, h = el.videoHeight * scale;
@@ -227,6 +236,15 @@ object Web {
     } catch (e) {} // a cross-origin video without CORS taints the canvas
   }, 1000);
   function act(command) {
+    // "playat:<key>|<seconds>": continue the phone's video in the car's copy of the page.
+    if (command.indexOf('playat:') === 0) {
+      var p = command.slice(7).split('|'), v = document.querySelector('video');
+      if (!v || p[0] !== key()) return;
+      var t = parseFloat(p[1]);
+      if (isFinite(t) && Math.abs(v.currentTime - t) > 3) v.currentTime = t;
+      if (v.paused) v.play();
+      return;
+    }
     var el = current;
     if (!el) return;
     if (command === 'play') el.play();
@@ -235,7 +253,7 @@ object Web {
     else if (command.indexOf('seek:') === 0) el.currentTime = parseFloat(command.slice(5));
   }
   function dispatch(target, command) {
-    if (target === id) act(command);
+    if (target === id || target === '*') act(command);
     for (var i = 0; i < window.frames.length; i++) {
       try { window.frames[i].postMessage({ __aaMedia: [target, command] }, '*'); } catch (e) {}
     }
@@ -312,9 +330,17 @@ object Web {
      * Toggles the largest video (or video iframe) on the page to fill the whole screen, by styling it rather
      * than via the Fullscreen API, which needs a real tap on the page's own button.
      */
-    const val TOGGLE_FULLSCREEN_JS = """
+    /**
+     * Styles one video (or player iframe) to fill the screen, or undoes that ([on] = false). Picks the player whose
+     * address contains [key] (see MEDIA_JS), otherwise the largest one.
+     */
+    fun fullscreenJs(on: Boolean, key: String? = null) = FULLSCREEN_JS
+        .replace("%ON%", on.toString())
+        .replace("%KEY%", org.json.JSONObject.quote(key.orEmpty()))
+
+    private const val FULLSCREEN_JS = """
 (function () {
-  var ID = '__aa_fs_style';
+  var ID = '__aa_fs_style', ON = %ON%, KEY = %KEY%;
   var current = document.querySelector('[data-aa-fs]');
   if (current) {
     current.removeAttribute('data-aa-fs');
@@ -322,12 +348,15 @@ object Web {
       e.removeAttribute('data-aa-fs-anc'); e.removeAttribute('data-aa-fs-in');
     });
     var old = document.getElementById(ID); if (old) old.remove();
-    return 'off';
   }
+  if (!ON) return 'off';
   var best = null, bestArea = 0;
   document.querySelectorAll('video, iframe').forEach(function (e) {
     var r = e.getBoundingClientRect(), a = r.width * r.height;
     if (r.width > 80 && a > bestArea) { best = e; bestArea = a; }
+  });
+  if (KEY) document.querySelectorAll('iframe').forEach(function (f) {
+    if ((f.dataset.aaSrc || f.src || '').indexOf(KEY) >= 0) best = f;
   });
   if (!best) return 'none';
   var el = best;
@@ -356,6 +385,7 @@ object Web {
 
 /** Recent page errors and Vimeo activity, viewable and shareable from the phone app for troubleshooting. */
 object DiagLog {
+    private const val TAG = "AkademieAuto"
     private const val MAX = 300
     private val entries = ArrayDeque<String>()
     private val time = SimpleDateFormat("HH:mm:ss", Locale.GERMANY)
@@ -364,6 +394,7 @@ object DiagLog {
     fun add(line: String) {
         if (entries.size >= MAX) entries.removeFirst()
         entries.addLast("${time.format(Date())} ${line.take(600)}")
+        Log.i(TAG, line)
     }
 
     @Synchronized

@@ -106,7 +106,7 @@ class MainActivity : ComponentActivity() {
         setContentView(root)
         setUpSystemBars() // needs the window's decor view, which setContentView creates
 
-        Web.configure(webView) { refresh.isRefreshing = false }
+        Web.configure(webView, CarSync::phoneNavigated) { refresh.isRefreshing = false }
         webView.addJavascriptInterface(object {
             @JavascriptInterface
             fun setScrolled(scrolled: Boolean) {
@@ -124,6 +124,7 @@ class MainActivity : ComponentActivity() {
                 refresh.visibility = View.GONE
                 buttonRow.visibility = View.GONE
                 applyFullscreen(true)
+                CarSync.phoneFullscreen(true)
             }
 
             override fun onHideCustomView() = exitFullscreen()
@@ -231,6 +232,7 @@ class MainActivity : ComponentActivity() {
         refresh.visibility = View.VISIBLE
         buttonRow.visibility = View.VISIBLE
         applyFullscreen(false)
+        CarSync.phoneFullscreen(false)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {

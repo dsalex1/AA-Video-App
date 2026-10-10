@@ -20,6 +20,7 @@ class BrowserScreen(carContext: CarContext) : Screen(carContext) {
     private val renderer = WebSurfaceRenderer(carContext)
 
     init {
+        renderer.onFullscreenChanged = { invalidate() }
         lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onCreate(owner: LifecycleOwner) {
                 carContext.getCarService(AppManager::class.java).setSurfaceCallback(renderer)
@@ -33,12 +34,15 @@ class BrowserScreen(carContext: CarContext) : Screen(carContext) {
         })
     }
 
+    /**
+     * Skip Silence and the YouTube/Akademie switch, top right; while a video is full screen only Skip Silence
+     * (the template needs at least one button). Pages and fullscreen follow the phone (see [CarSync]).
+     */
     override fun onGetTemplate(): Template {
-        val actionStrip = ActionStrip.Builder()
-            .addAction(iconAction(R.drawable.ic_back) { renderer.goBack() })
-            .addAction(iconAction(R.drawable.ic_home) { renderer.loadHome() })
+        val actions = ActionStrip.Builder()
             .addAction(iconAction(R.drawable.ic_forward) { renderer.toggleSkipSilenceSettings() })
-            .addAction(
+        if (!renderer.fullscreen) {
+            actions.addAction(
                 // Labelled with the site it switches to.
                 Action.Builder()
                     .setTitle(renderer.site.other.label)
@@ -48,16 +52,10 @@ class BrowserScreen(carContext: CarContext) : Screen(carContext) {
                     }
                     .build()
             )
-            .build()
-        val mapActionStrip = ActionStrip.Builder()
-            .addAction(Action.PAN)
-            .addAction(iconAction(R.drawable.ic_up) { renderer.scrollPage(-1) })
-            .addAction(iconAction(R.drawable.ic_down) { renderer.scrollPage(1) })
-            .addAction(iconAction(R.drawable.ic_fullscreen) { renderer.toggleFullscreen() })
-            .build()
+        }
         return NavigationTemplate.Builder()
-            .setActionStrip(actionStrip)
-            .setMapActionStrip(mapActionStrip)
+            .setActionStrip(actions.build())
+            .setMapActionStrip(ActionStrip.Builder().addAction(Action.PAN).build()) // drag to scroll; no visible button
             .build()
     }
 

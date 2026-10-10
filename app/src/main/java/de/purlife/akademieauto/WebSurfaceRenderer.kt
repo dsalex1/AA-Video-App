@@ -1,25 +1,33 @@
 package de.purlife.akademieauto
 
 import android.content.Context
-import android.graphics.Rect
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import androidx.car.app.SurfaceCallback
 import androidx.car.app.SurfaceContainer
+import androidx.core.os.HandlerCompat
 
 /**
- * Mirrors a [CarPresentation] onto the surface Android Auto hands to navigation apps,
- * via a private virtual display. Car touch input is forwarded to the page.
+ * Mirrors a [CarPresentation] onto the surface Android Auto hands to navigation apps, via a private virtual
+ * display. The page fills the whole surface, like a map, with the buttons floating on top. Car touch input is forwarded to the page. Follows the phone via [CarSync].
  */
-class WebSurfaceRenderer(private val context: Context) : SurfaceCallback {
+class WebSurfaceRenderer(private val context: Context) : SurfaceCallback, CarSync.Car {
+    private val main = Handler(Looper.getMainLooper())
     private var virtualDisplay: VirtualDisplay? = null
     private var presentation: CarPresentation? = null
     private var width = 0
     private var height = 0
-    private var visibleArea: Rect? = null
 
     var site = Site.load(context)
         private set
+
+    /** A video fills the screen; the screen then shows only the button to leave it. */
+    var fullscreen = false
+        private set
+    var onFullscreenChanged: (() -> Unit)? = null
 
     override fun onSurfaceAvailable(surfaceContainer: SurfaceContainer) {
         val surface = surfaceContainer.surface ?: return
@@ -37,18 +45,13 @@ class WebSurfaceRenderer(private val context: Context) : SurfaceCallback {
             )
             virtualDisplay = display
             presentation = CarPresentation(context, display.display, site).also { it.show() }
+            CarSync.car = this
         }
-        applyInsets()
     }
 
     override fun onSurfaceDestroyed(surfaceContainer: SurfaceContainer) {
         // Detach only; the page (and its audio) keeps running until the session ends.
         virtualDisplay?.surface = null
-    }
-
-    override fun onVisibleAreaChanged(visibleArea: Rect) {
-        this.visibleArea = Rect(visibleArea)
-        applyInsets()
     }
 
     override fun onClick(x: Float, y: Float) {
@@ -59,43 +62,66 @@ class WebSurfaceRenderer(private val context: Context) : SurfaceCallback {
         presentation?.scrollBy(distanceX, distanceY)
     }
 
-    fun goBack() {
-        val p = presentation ?: return
-        if (!p.exitFullscreen() && p.webView.canGoBack()) p.webView.goBack()
-    }
-
-    fun loadHome() {
-        presentation?.loadSite(site)
-    }
-
-    fun switchSite() {
-        site = site.other
-        Site.save(context, site)
-        loadHome()
-    }
-
     fun toggleSkipSilenceSettings() {
         presentation?.toggleSkipSilenceSettings()
     }
 
-    fun toggleFullscreen() {
-        presentation?.toggleFullscreen()
+    /** The car only; the phone keeps its page (and the car follows it again on its next navigation). */
+    fun switchSite() {
+        site = site.other
+        Site.save(context, site)
+        setFullscreen(false)
+        presentation?.webView?.loadUrl(site.homeUrl)
     }
 
-    fun scrollPage(direction: Int) {
-        presentation?.scrollBy(0f, direction * height * 0.6f)
+    override fun load(url: String) {
+        val p = presentation ?: return
+        if (p.webView.url == url) return
+        setFullscreen(false)
+        p.webView.loadUrl(url)
+    }
+
+    /**
+     * Shows the phone's video full screen and continues it. Repeated for a while: right after [load] the page or
+     * the (lazily loaded) player may not exist yet.
+     */
+    override fun showVideo(key: String, positionS: Double) {
+        DiagLog.add("car: show video $key at $positionS s")
+        setFullscreen(true, key)
+        val start = SystemClock.elapsedRealtime()
+        repeat(RETRIES) { i ->
+            HandlerCompat.postDelayed(main, {
+                val p = presentation ?: return@postDelayed
+                val at = positionS + (SystemClock.elapsedRealtime() - start) / 1000.0
+                p.setVideoFullscreen(true, key)
+                p.webView.evaluateJavascript(
+                    "window.__aaMedia && window.__aaMedia('*', ${org.json.JSONObject.quote("playat:$key|$at")})", null
+                )
+            }, RETRY_TOKEN, (i + 1) * 1000L)
+        }
+    }
+
+    override fun exitVideo() = setFullscreen(false)
+
+    private fun setFullscreen(on: Boolean, key: String? = null) {
+        if (!on) main.removeCallbacksAndMessages(RETRY_TOKEN)
+        presentation?.setVideoFullscreen(on, key)
+        if (fullscreen == on) return
+        fullscreen = on
+        onFullscreenChanged?.invoke()
     }
 
     fun release() {
+        main.removeCallbacksAndMessages(RETRY_TOKEN)
+        if (CarSync.car === this) CarSync.car = null
         presentation?.destroy()
         presentation = null
         virtualDisplay?.release()
         virtualDisplay = null
     }
 
-    private fun applyInsets() {
-        val area = visibleArea ?: return
-        if (width == 0 || height == 0) return
-        presentation?.setInsets(area.left, area.top, width - area.right, height - area.bottom)
+    private companion object {
+        const val RETRIES = 10
+        val RETRY_TOKEN = Any()
     }
 }
