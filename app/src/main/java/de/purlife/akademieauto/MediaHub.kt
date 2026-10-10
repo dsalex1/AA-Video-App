@@ -33,6 +33,17 @@ object MediaHub {
     var current: State? = null
         private set
 
+    private val ZOOMS = listOf(1f, 4f / 3, 16f / 9)
+
+    /** How far the album-art stills are zoomed in, see [Web.MEDIA_JS]. Cycles through [ZOOMS]. */
+    @Volatile
+    var zoom = ZOOMS[0]
+        private set
+
+    fun nextZoom() {
+        zoom = ZOOMS[(ZOOMS.indexOf(zoom) + 1) % ZOOMS.size]
+    }
+
     /** Latest still of the current frame's video, see [JsBridge.frame]. */
     var still: Bitmap? = null
         private set
@@ -77,6 +88,9 @@ object MediaHub {
             )
             main.post { onUpdate(state) }
         }
+
+        @JavascriptInterface
+        fun zoom(): Float = zoom
 
         @JavascriptInterface
         fun frame(frameId: String, dataUrl: String) {

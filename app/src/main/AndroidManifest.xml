@@ -34,11 +34,6 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Required for Android Auto media apps; handled by PlaybackService.onPlayFromSearch. -->
-            <intent-filter>
-                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
         </activity>
 
         <!-- Exported for Android Auto, which browses it as a media app. -->
@@ -48,6 +43,12 @@
             android:foregroundServiceType="mediaPlayback">
             <intent-filter>
                 <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+            <!-- Voice "play …"; handled by onPlayFromSearch. Not on MainActivity: Android Auto then tries to start that
+                 activity as a car app and crashes. -->
+            <intent-filter>
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </service>
 

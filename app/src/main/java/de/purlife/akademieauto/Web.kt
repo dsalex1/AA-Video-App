@@ -212,7 +212,8 @@ object Web {
   setInterval(function () {
     var el = current;
     if (!(el instanceof HTMLVideoElement) || el.paused || !el.videoWidth) return;
-    var size = canvas.width, scale = size / Math.max(el.videoWidth, el.videoHeight);
+    // Zoom > 1 crops the sides so the picture fills more of Android Auto's square art box.
+    var size = canvas.width, scale = size / Math.max(el.videoWidth, el.videoHeight) * AAMedia.zoom();
     var w = el.videoWidth * scale, h = el.videoHeight * scale;
     var g = canvas.getContext('2d');
     g.fillStyle = '#000';

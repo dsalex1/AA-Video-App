@@ -49,6 +49,7 @@ class PlaybackService : MediaBrowserServiceCompat() {
                     when (action) {
                         ACTION_REWIND -> onRewind()
                         ACTION_FORWARD -> onFastForward()
+                        ACTION_ZOOM -> MediaHub.nextZoom()
                     }
                 }
             })
@@ -115,6 +116,7 @@ class PlaybackService : MediaBrowserServiceCompat() {
                 )
                 .addCustomAction(ACTION_REWIND, "−$REWIND_S s", R.drawable.ic_rewind)
                 .addCustomAction(ACTION_FORWARD, "+$FORWARD_S s", R.drawable.ic_forward)
+                .addCustomAction(ACTION_ZOOM, "Zoom", R.drawable.ic_fullscreen)
                 .setState(
                     if (playing) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED,
                     position, if (playing) 1f else 0f, SystemClock.elapsedRealtime(),
@@ -171,6 +173,7 @@ class PlaybackService : MediaBrowserServiceCompat() {
         private const val ACTION_PAUSE = "pause"
         private const val ACTION_REWIND = "rewind"
         private const val ACTION_FORWARD = "forward"
+        private const val ACTION_ZOOM = "zoom"
 
         /** Must be called while the app is visible (Android blocks starting it from the background). */
         fun start(context: Context) {
