@@ -33,7 +33,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         site = Site.load(this)
         root = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
-        setUpSystemBars()
         webView = WebView(this)
         root.addView(webView, matchParent())
 
@@ -66,6 +65,7 @@ class MainActivity : ComponentActivity() {
         )
         updateSwitchLabel()
         setContentView(root)
+        setUpSystemBars() // needs the window's decor view, which setContentView creates
 
         Web.configure(webView)
         webView.webChromeClient = object : Web.ChromeClient() {
