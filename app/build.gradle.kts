@@ -44,15 +44,6 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
-    lint {
-        // automotive_app_desc declares "media" only so Android Auto lists the sideloaded app; it isn't a
-        // MediaBrowserService app, so the Play media-app checks don't apply.
-        disable += setOf(
-            "MissingIntentFilterForMediaSearch",
-            "MissingMediaBrowserServiceIntentFilter",
-            "MissingOnPlayFromSearch",
-        )
-    }
     testOptions {
         unitTests.isIncludeAndroidResources = true
     }

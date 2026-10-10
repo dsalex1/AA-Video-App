@@ -1,9 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Declared as "media" rather than "template": Android Auto only lists sideloaded apps ("Unknown sources") that
-  declare media; template apps are hidden unless installed from Play. Fermata Auto and AA Browser do the same.
-  The car UI still comes from AkademieCarAppService (navigation category, drawing on the map surface).
--->
 <automotiveApp>
-    <uses name="media" />
+    <uses name="template" />
 </automotiveApp>
