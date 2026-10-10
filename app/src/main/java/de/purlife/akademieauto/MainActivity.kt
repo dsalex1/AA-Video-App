@@ -14,8 +14,9 @@ import android.view.ViewGroup
 import android.view.Window
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
-import android.widget.Button
 import android.widget.FrameLayout
+import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.LinearLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
@@ -36,7 +37,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var root: FrameLayout
     private lateinit var webView: WebView
     private lateinit var refresh: SwipeRefreshLayout
-    private lateinit var switchButton: Button
+    private lateinit var switchButton: ImageButton
     private lateinit var buttonRow: LinearLayout
     private lateinit var site: Site
     private var customView: View? = null
@@ -62,7 +63,7 @@ class MainActivity : ComponentActivity() {
         root.addView(refresh, matchParent())
 
         val density = resources.displayMetrics.density
-        switchButton = pillButton {
+        switchButton = roundButton {
             site = site.other
             Site.save(this@MainActivity, site)
             updateSwitchLabel()
@@ -73,26 +74,32 @@ class MainActivity : ComponentActivity() {
                 true
             }
         }
-        val skipSilenceButton = pillButton { showSkipSilenceSettings() }.apply { setText(R.string.skip_silence) }
-        // Only useful while Android Auto shows the video as album art.
-        val carTextButton = pillButton {}.apply {
-            fun label() { text = if (MediaHub.hideCarText) "Auto-Text an" else "Auto-Text aus" }
-            label()
-            setOnClickListener { MediaHub.toggleCarText(); label() }
-            visibility = View.GONE
+        val skipSilenceButton = roundButton { showSkipSilenceSettings() }.apply {
+            setImageResource(R.drawable.ic_forward)
+            contentDescription = getString(R.string.skip_silence)
+        }
+        // Only useful while Android Auto shows the video as album art; dimmed while switched off.
+        val carTextButton = roundButton {}.apply {
+            setImageResource(R.drawable.ic_car_text)
+            contentDescription = getString(R.string.car_text)
+            setOnClickListener { MediaHub.toggleCarText(); alpha = if (MediaHub.hideCarText) DIMMED else 1f }
+        }
+        val stillButton = roundButton {}.apply {
+            setImageResource(R.drawable.ic_still)
+            contentDescription = getString(R.string.car_still)
+            setOnClickListener { MediaHub.toggleStills(); alpha = if (MediaHub.stillsOn) 1f else DIMMED }
         }
         CarConnection(this).type.observe(this) { type ->
-            carTextButton.visibility = if (type == CarConnection.CONNECTION_TYPE_PROJECTION) View.VISIBLE else View.GONE
+            val visibility = if (type == CarConnection.CONNECTION_TYPE_PROJECTION) View.VISIBLE else View.GONE
+            carTextButton.visibility = visibility
+            stillButton.visibility = visibility
         }
         buttonRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            addView(switchButton)
-            addView(skipSilenceButton, LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply { marginStart = (8 * density).toInt() })
-            addView(carTextButton, LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply { marginStart = (8 * density).toInt() })
+            val size = (48 * density).toInt()
+            for (button in listOf(switchButton, skipSilenceButton, carTextButton, stillButton)) {
+                addView(button, LinearLayout.LayoutParams(size, size).apply { marginEnd = (10 * density).toInt() })
+            }
         }
         root.addView(
             buttonRow,
@@ -184,13 +191,16 @@ class MainActivity : ComponentActivity() {
         ViewCompat.requestApplyInsets(root)
     }
 
-    private fun pillButton(onClick: () -> Unit) = Button(this).apply {
-        setTextColor(Color.WHITE)
-        isAllCaps = false
+    /** Small round button like Android Auto's, with a light ring and a shadow to stand out on any page. */
+    private fun roundButton(onClick: () -> Unit) = ImageButton(this).apply {
+        val density = resources.displayMetrics.density
         background = GradientDrawable().apply {
-            setColor(0xCC000000.toInt())
-            cornerRadius = 24 * resources.displayMetrics.density
+            shape = GradientDrawable.OVAL
+            setColor(0xE6202124.toInt())
+            setStroke((1.5f * density).toInt(), 0xB3FFFFFF.toInt())
         }
+        elevation = 6 * density
+        scaleType = ImageView.ScaleType.CENTER
         setOnClickListener { onClick() }
     }
 
@@ -222,7 +232,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun updateSwitchLabel() {
-        switchButton.text = getString(R.string.switch_to, site.other.label)
+        switchButton.setImageResource(if (site.other == Site.YOUTUBE) R.drawable.ic_site_youtube else R.drawable.ic_site_akademie)
+        switchButton.contentDescription = getString(R.string.switch_to, site.other.label)
     }
 
     private fun exitFullscreen() {
@@ -250,6 +261,7 @@ class MainActivity : ComponentActivity() {
         FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
 
     private companion object {
+        const val DIMMED = 0.45f
         /** Reports on each touch whether the element under the finger (or the page) is scrolled down. */
         const val PULL_STATE_JS = """
 (function () {

@@ -51,6 +51,17 @@ object MediaHub {
         listeners.toList().forEach { it() }
     }
 
+    /** Whether the album art shows stills of the video at all (they cost a little battery). */
+    @Volatile
+    var stillsOn = true
+        private set
+
+    fun toggleStills() {
+        stillsOn = !stillsOn
+        if (!stillsOn) still = null
+        listeners.toList().forEach { it() }
+    }
+
     fun nextZoom() {
         zoom = ZOOMS[(ZOOMS.indexOf(zoom) + 1) % ZOOMS.size]
     }
@@ -103,6 +114,9 @@ object MediaHub {
 
         @JavascriptInterface
         fun zoom(): Float = zoom
+
+        @JavascriptInterface
+        fun stillsOn(): Boolean = stillsOn
 
         @JavascriptInterface
         fun frame(frameId: String, dataUrl: String) {

@@ -223,7 +223,7 @@ object Web {
   canvas.width = canvas.height = 480;
   setInterval(function () {
     var el = current;
-    if (!(el instanceof HTMLVideoElement) || el.paused || !el.videoWidth) return;
+    if (!AAMedia.stillsOn() || !(el instanceof HTMLVideoElement) || el.paused || !el.videoWidth) return;
     var W = canvas.width, H = canvas.height;
     var scale = Math.min(W / el.videoWidth, H / el.videoHeight) * AAMedia.zoom();
     var w = el.videoWidth * scale, h = el.videoHeight * scale;
