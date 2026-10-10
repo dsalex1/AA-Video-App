@@ -1,0 +1,88 @@
+package de.purlife.akademieauto
+
+import android.app.Presentation
+import android.content.Context
+import android.graphics.Color
+import android.os.Bundle
+import android.os.SystemClock
+import android.view.Display
+import android.view.InputDevice
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewGroup
+import android.webkit.WebChromeClient
+import android.webkit.WebView
+import android.widget.FrameLayout
+
+/** The web page, rendered onto the car's virtual display. */
+class CarPresentation(outerContext: Context, display: Display) : Presentation(outerContext, display) {
+    private lateinit var root: FrameLayout
+    private lateinit var content: FrameLayout
+    lateinit var webView: WebView
+        private set
+
+    private var customView: View? = null
+    private var customViewCallback: WebChromeClient.CustomViewCallback? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        root = FrameLayout(context).apply { setBackgroundColor(Color.BLACK) }
+        content = FrameLayout(context)
+        webView = WebView(context)
+        content.addView(webView, matchParent())
+        root.addView(content, matchParent())
+        setContentView(root)
+
+        AkademieWeb.configure(webView, object : WebChromeClient() {
+            override fun onShowCustomView(view: View, callback: CustomViewCallback) {
+                customView = view
+                customViewCallback = callback
+                // Fullscreen video covers the whole car screen, ignoring the action-strip insets.
+                root.addView(view, matchParent())
+                content.visibility = View.GONE
+            }
+
+            override fun onHideCustomView() {
+                customView?.let { root.removeView(it) }
+                customView = null
+                customViewCallback = null
+                content.visibility = View.VISIBLE
+            }
+        })
+        webView.loadUrl(AkademieWeb.HOME_URL)
+    }
+
+    /** Insets so page content isn't hidden behind the Android Auto action strips. */
+    fun setInsets(left: Int, top: Int, right: Int, bottom: Int) {
+        content.setPadding(left, top, right, bottom)
+    }
+
+    fun tap(x: Float, y: Float) {
+        val target = window?.decorView ?: return
+        val downTime = SystemClock.uptimeMillis()
+        for (action in intArrayOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
+            val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action, x, y, 0)
+            event.source = InputDevice.SOURCE_TOUCHSCREEN
+            target.dispatchTouchEvent(event)
+            event.recycle()
+        }
+    }
+
+    fun scrollBy(dx: Float, dy: Float) {
+        if (customView == null) webView.scrollBy(dx.toInt(), dy.toInt())
+    }
+
+    fun exitFullscreen(): Boolean {
+        val callback = customViewCallback ?: return false
+        callback.onCustomViewHidden()
+        return true
+    }
+
+    fun destroy() {
+        webView.destroy()
+        dismiss()
+    }
+
+    private fun matchParent() =
+        FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+}
