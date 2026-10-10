@@ -191,13 +191,13 @@ class MainActivity : ComponentActivity() {
         ViewCompat.requestApplyInsets(root)
     }
 
-    /** Small round button like Android Auto's, with a light ring and a shadow to stand out on any page. */
+    /** Small round button like Android Auto's, with a grey ring and a shadow to stand out on any page. */
     private fun roundButton(onClick: () -> Unit) = ImageButton(this).apply {
         val density = resources.displayMetrics.density
         background = GradientDrawable().apply {
             shape = GradientDrawable.OVAL
             setColor(0xE6202124.toInt())
-            setStroke((1.5f * density).toInt(), 0xB3FFFFFF.toInt())
+            setStroke((1.5f * density).toInt(), 0xFF5F6368.toInt())
         }
         elevation = 6 * density
         scaleType = ImageView.ScaleType.CENTER

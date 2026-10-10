@@ -40,7 +40,7 @@
         <service
             android:name=".PlaybackService"
             android:label="@string/car_media_label"
-            android:icon="@mipmap/ic_car_video"
+            android:icon="@mipmap/ic_launcher"
             android:exported="true"
             android:foregroundServiceType="mediaPlayback">
             <intent-filter>

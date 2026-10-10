@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#1E6B78</color>
-    <color name="ic_car_video_background">#E0703C</color>
-    <color name="ic_car_web_background">#2F6FB5</color>
 </resources>
