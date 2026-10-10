@@ -37,11 +37,22 @@ class BrowserScreen(carContext: CarContext) : Screen(carContext) {
             .addAction(iconAction(R.drawable.ic_back) { renderer.goBack() })
             .addAction(iconAction(R.drawable.ic_home) { renderer.loadHome() })
             .addAction(iconAction(R.drawable.ic_reload) { renderer.reload() })
+            .addAction(
+                // Labelled with the site it switches to.
+                Action.Builder()
+                    .setTitle(renderer.site.other.label)
+                    .setOnClickListener {
+                        renderer.switchSite()
+                        invalidate()
+                    }
+                    .build()
+            )
             .build()
         val mapActionStrip = ActionStrip.Builder()
             .addAction(Action.PAN)
             .addAction(iconAction(R.drawable.ic_up) { renderer.scrollPage(-1) })
             .addAction(iconAction(R.drawable.ic_down) { renderer.scrollPage(1) })
+            .addAction(iconAction(R.drawable.ic_fullscreen) { renderer.toggleFullscreen() })
             .build()
         return NavigationTemplate.Builder()
             .setActionStrip(actionStrip)

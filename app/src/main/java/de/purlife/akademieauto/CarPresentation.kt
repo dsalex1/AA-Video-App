@@ -10,19 +10,19 @@ import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.widget.FrameLayout
 
 /** The web page, rendered onto the car's virtual display. */
-class CarPresentation(outerContext: Context, display: Display) : Presentation(outerContext, display) {
+class CarPresentation(outerContext: Context, display: Display, private val initialSite: Site) :
+    Presentation(outerContext, display) {
     private lateinit var root: FrameLayout
     private lateinit var content: FrameLayout
     lateinit var webView: WebView
         private set
 
     private var customView: View? = null
-    private var customViewCallback: WebChromeClient.CustomViewCallback? = null
+    private var customViewCallback: android.webkit.WebChromeClient.CustomViewCallback? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,7 +33,8 @@ class CarPresentation(outerContext: Context, display: Display) : Presentation(ou
         root.addView(content, matchParent())
         setContentView(root)
 
-        AkademieWeb.configure(webView, object : WebChromeClient() {
+        Web.configure(webView)
+        webView.webChromeClient = object : Web.ChromeClient() {
             override fun onShowCustomView(view: View, callback: CustomViewCallback) {
                 customView = view
                 customViewCallback = callback
@@ -48,13 +49,23 @@ class CarPresentation(outerContext: Context, display: Display) : Presentation(ou
                 customViewCallback = null
                 content.visibility = View.VISIBLE
             }
-        })
-        webView.loadUrl(AkademieWeb.HOME_URL)
+        }
+        webView.loadUrl(initialSite.homeUrl)
     }
 
     /** Insets so page content isn't hidden behind the Android Auto action strips. */
     fun setInsets(left: Int, top: Int, right: Int, bottom: Int) {
         content.setPadding(left, top, right, bottom)
+    }
+
+    fun loadSite(site: Site) {
+        exitFullscreen()
+        webView.loadUrl(site.homeUrl)
+    }
+
+    /** Leaves the page's own fullscreen if active, otherwise toggles our full-screen video styling. */
+    fun toggleFullscreen() {
+        if (!exitFullscreen()) webView.evaluateJavascript(Web.TOGGLE_FULLSCREEN_JS, null)
     }
 
     fun tap(x: Float, y: Float) {

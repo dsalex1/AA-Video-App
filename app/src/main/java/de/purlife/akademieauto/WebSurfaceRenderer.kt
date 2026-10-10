@@ -18,6 +18,9 @@ class WebSurfaceRenderer(private val context: Context) : SurfaceCallback {
     private var height = 0
     private var visibleArea: Rect? = null
 
+    var site = Site.load(context)
+        private set
+
     override fun onSurfaceAvailable(surfaceContainer: SurfaceContainer) {
         val surface = surfaceContainer.surface ?: return
         width = surfaceContainer.width
@@ -33,7 +36,7 @@ class WebSurfaceRenderer(private val context: Context) : SurfaceCallback {
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_PRESENTATION or DisplayManager.VIRTUAL_DISPLAY_FLAG_OWN_CONTENT_ONLY,
             )
             virtualDisplay = display
-            presentation = CarPresentation(context, display.display).also { it.show() }
+            presentation = CarPresentation(context, display.display, site).also { it.show() }
         }
         applyInsets()
     }
@@ -62,10 +65,17 @@ class WebSurfaceRenderer(private val context: Context) : SurfaceCallback {
     }
 
     fun loadHome() {
-        presentation?.run {
-            exitFullscreen()
-            webView.loadUrl(AkademieWeb.HOME_URL)
-        }
+        presentation?.loadSite(site)
+    }
+
+    fun switchSite() {
+        site = site.other
+        Site.save(context, site)
+        loadHome()
+    }
+
+    fun toggleFullscreen() {
+        presentation?.toggleFullscreen()
     }
 
     fun reload() {

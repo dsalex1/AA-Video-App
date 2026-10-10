@@ -1,7 +1,7 @@
 # Akademie Auto
 
-Android Auto app that shows https://pur-life.de/akademie on the car screen and plays its embedded
-Vimeo videos, parked or driving (intended for passengers).
+Android Auto app that shows https://pur-life.de/akademie (or YouTube) on the car screen and plays its
+videos, parked or driving (intended for passengers).
 
 ## How it works
 
@@ -9,8 +9,11 @@ Vimeo videos, parked or driving (intended for passengers).
   surface on the car screen.
 - Renders a normal `WebView` into a private virtual display that is mirrored onto that surface
   (`WebSurfaceRenderer` / `CarPresentation`).
-- Taps on the car screen are forwarded to the page. Buttons on the right: back, home, reload;
-  map buttons: pan mode (drag to scroll) and page up/down. Vimeo's fullscreen button fills the screen.
+- Taps on the car screen are forwarded to the page. Buttons on the right: back, home, reload and a
+  switch between Akademie and YouTube; map buttons: pan mode (drag to scroll), page up/down and
+  fullscreen (blows the largest video on the page up to the whole screen; tap again to restore).
+  The players' own fullscreen buttons work too.
+- The phone app has the same Akademie/YouTube switch (bottom left).
 - **Log in once in the phone app** (there's no keyboard on the car). Cookies are shared, so the car
   side is logged in too.
 - Audio plays through the car speakers like any media app.
