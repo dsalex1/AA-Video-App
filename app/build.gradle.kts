@@ -5,13 +5,13 @@ plugins {
 
 android {
     namespace = "de.purlife.akademieauto"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         // Published ID (permanent on Play); the Kotlin package / namespace above is internal only.
         applicationId = "de.dsalex.akademieauto"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         // CI passes the run number so every upload to Play gets a fresh versionCode.
         versionCode = (System.getenv("VERSION_CODE") ?: "1").toInt()
         versionName = "1.0.${System.getenv("VERSION_CODE") ?: "0"}"
