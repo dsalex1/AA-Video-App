@@ -39,6 +39,8 @@
         <!-- Exported for Android Auto, which browses it as a media app. -->
         <service
             android:name=".PlaybackService"
+            android:label="@string/car_media_label"
+            android:icon="@mipmap/ic_car_video"
             android:exported="true"
             android:foregroundServiceType="mediaPlayback">
             <intent-filter>
@@ -54,6 +56,8 @@
 
         <service
             android:name=".AkademieCarAppService"
+            android:label="@string/car_browser_label"
+            android:icon="@mipmap/ic_car_web"
             android:exported="true">
             <intent-filter>
                 <action android:name="androidx.car.app.CarAppService" />

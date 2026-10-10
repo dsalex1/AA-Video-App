@@ -3,4 +3,7 @@
     <string name="app_name">Akademie Auto</string>
     <string name="switch_to">→ %1$s</string>
     <string name="skip_silence">⏩ Skip Silence</string>
+    <!-- Separate launcher entries in Android Auto (it merges unnamed car components of one app). -->
+    <string name="car_media_label">Akademie Video</string>
+    <string name="car_browser_label">Akademie Web</string>
 </resources>
