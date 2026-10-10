@@ -1,6 +1,6 @@
 # Akademie Auto
 
-Android Auto app that shows https://pur-life.de/akademie (or YouTube) on the car screen and plays its
+Android Auto app that shows the pur-life Akademie (starting at the Heilpraktiker-Ausbildung 1 course, https://pur-life.de/akademie/kurs/42) or YouTube on the car screen and plays its
 videos, parked or driving (intended for passengers).
 
 ## How it works

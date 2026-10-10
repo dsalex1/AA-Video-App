@@ -24,7 +24,7 @@ import java.util.Date
 import java.util.Locale
 
 enum class Site(val label: String, val homeUrl: String) {
-    AKADEMIE("Akademie", "https://pur-life.de/akademie"),
+    AKADEMIE("Akademie", "https://pur-life.de/akademie/kurs/42"), // Heilpraktiker-Ausbildung 1
     YOUTUBE("YouTube", "https://m.youtube.com/");
 
     val other get() = if (this == AKADEMIE) YOUTUBE else AKADEMIE
