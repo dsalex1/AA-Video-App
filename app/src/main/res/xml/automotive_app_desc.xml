@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  template: the navigation-surface car app (AkademieCarAppService), needs a Play install.
+  media: PlaybackService, also allowed when sideloaded; shows the video as refreshing album art.
+-->
 <automotiveApp>
     <uses name="template" />
+    <uses name="media" />
 </automotiveApp>

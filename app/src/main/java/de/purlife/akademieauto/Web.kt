@@ -206,6 +206,22 @@ object Web {
     }, true);
   });
   setInterval(function () { if (current && !current.paused) report(); }, 5000);
+  // Stills of the playing video for the media session's album art (Android Auto shows that while driving).
+  var canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 480;
+  setInterval(function () {
+    var el = current;
+    if (!(el instanceof HTMLVideoElement) || el.paused || !el.videoWidth) return;
+    var size = canvas.width, scale = size / Math.max(el.videoWidth, el.videoHeight);
+    var w = el.videoWidth * scale, h = el.videoHeight * scale;
+    var g = canvas.getContext('2d');
+    g.fillStyle = '#000';
+    g.fillRect(0, 0, size, size);
+    try {
+      g.drawImage(el, (size - w) / 2, (size - h) / 2, w, h);
+      AAMedia.frame(id, canvas.toDataURL('image/jpeg', 0.7));
+    } catch (e) {} // a cross-origin video without CORS taints the canvas
+  }, 1000);
   function act(command) {
     var el = current;
     if (!el) return;

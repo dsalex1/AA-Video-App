@@ -1,8 +1,11 @@
 package de.purlife.akademieauto
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.util.Base64
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import org.json.JSONObject
@@ -30,6 +33,10 @@ object MediaHub {
     var current: State? = null
         private set
 
+    /** Latest still of the current frame's video, see [JsBridge.frame]. */
+    var still: Bitmap? = null
+        private set
+
     fun register(webView: WebView) {
         webViews.removeAll { it.get() == null }
         webViews += WeakReference(webView)
@@ -50,6 +57,7 @@ object MediaHub {
         val previous = current
         // Follow whichever frame is playing; ignore pauses from frames that aren't the current one.
         if (!state.playing && previous != null && previous.frameId != state.frameId) return
+        if (previous?.frameId != state.frameId) still = null
         current = state
         listeners.toList().forEach { it() }
     }
@@ -68,6 +76,19 @@ object MediaHub {
                 updatedAt = SystemClock.elapsedRealtime(),
             )
             main.post { onUpdate(state) }
+        }
+
+        @JavascriptInterface
+        fun frame(frameId: String, dataUrl: String) {
+            val bytes = runCatching { Base64.decode(dataUrl.substringAfter(','), Base64.DEFAULT) }.getOrNull() ?: return
+            // RGB_565 halves the size; the bitmap travels over binder to every media controller (1 MB limit).
+            val options = BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.RGB_565 }
+            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options) ?: return
+            main.post {
+                if (current?.frameId != frameId) return@post
+                still = bitmap
+                listeners.toList().forEach { it() }
+            }
         }
 
         private fun String.cleanTitle() = removeSuffix(" - YouTube").replace(Regex(" (from .+ )?on Vimeo$"), "").trim()

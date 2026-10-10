@@ -4,30 +4,31 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Bundle
-import android.os.IBinder
 import android.os.SystemClock
+import android.support.v4.media.MediaBrowserCompat
+import android.support.v4.media.MediaDescriptionCompat
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
+import androidx.media.MediaBrowserServiceCompat
 import androidx.media.app.NotificationCompat.MediaStyle
 
 /**
  * Keeps the app process running while it's in the background or the screen is off (Android otherwise freezes
  * background apps), and shows a media notification / lock-screen controls for whatever plays in the WebViews.
+ * Also Android Auto's media app: sideloaded media apps are allowed there, and the album art is a live still of the
+ * video, refreshed every second.
  */
-class PlaybackService : Service() {
+class PlaybackService : MediaBrowserServiceCompat() {
     private lateinit var session: MediaSessionCompat
     private val onMediaChanged: () -> Unit = { update() }
-
-    override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -37,6 +38,9 @@ class PlaybackService : Service() {
         session = MediaSessionCompat(this, "AkademieAuto").apply {
             setCallback(object : MediaSessionCompat.Callback() {
                 override fun onPlay() = MediaHub.command("play")
+                override fun onPlayFromMediaId(mediaId: String?, extras: Bundle?) = onPlay()
+                // Voice ("play Akademie Auto"): there's no catalogue to search, so resume the current video.
+                override fun onPlayFromSearch(query: String?, extras: Bundle?) = onPlay()
                 override fun onPause() = MediaHub.command("pause")
                 override fun onSeekTo(pos: Long) = MediaHub.command("seek:${pos / 1000.0}")
                 override fun onRewind() = MediaHub.command("skip:-$REWIND_S")
@@ -51,7 +55,22 @@ class PlaybackService : Service() {
             setSessionActivity(openAppIntent())
             isActive = true
         }
+        sessionToken = session.sessionToken
         MediaHub.addListener(onMediaChanged)
+    }
+
+    override fun onGetRoot(clientPackageName: String, clientUid: Int, rootHints: Bundle?) = BrowserRoot(ROOT, null)
+
+    override fun onLoadChildren(parentId: String, result: Result<MutableList<MediaBrowserCompat.MediaItem>>) {
+        val nowPlaying = MediaDescriptionCompat.Builder()
+            .setMediaId(NOW_PLAYING)
+            .setTitle(MediaHub.current?.title?.ifBlank { null } ?: "Aktuelles Video")
+            .setSubtitle("Auf dem Handy auswählen")
+            .build()
+        result.sendResult(
+            if (parentId == ROOT) mutableListOf(MediaBrowserCompat.MediaItem(nowPlaying, MediaBrowserCompat.MediaItem.FLAG_PLAYABLE))
+            else mutableListOf()
+        )
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -81,6 +100,7 @@ class PlaybackService : Service() {
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, media?.title?.ifBlank { null } ?: getString(R.string.app_name))
                 .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, media?.artist ?: "")
                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, media?.durationMs ?: 0)
+                .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, MediaHub.still)
                 .build()
         )
         val playing = media?.playing == true
@@ -143,6 +163,8 @@ class PlaybackService : Service() {
     companion object {
         private const val CHANNEL = "playback"
         private const val NOTIFICATION_ID = 1
+        private const val ROOT = "root"
+        private const val NOW_PLAYING = "now_playing"
         private const val REWIND_S = 10
         private const val FORWARD_S = 30
         private const val ACTION_PLAY = "play"
