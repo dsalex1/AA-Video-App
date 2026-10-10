@@ -2,6 +2,7 @@ package de.purlife.akademieauto
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Bitmap
 import android.content.pm.ApplicationInfo
 import android.util.Log
 import android.webkit.ConsoleMessage
@@ -14,6 +15,8 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -43,7 +46,7 @@ object Web {
     private const val TAG = "Web"
 
     @SuppressLint("SetJavaScriptEnabled")
-    fun configure(webView: WebView) {
+    fun configure(webView: WebView, onPageFinished: (() -> Unit)? = null) {
         if (webView.context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) {
             WebView.setWebContentsDebuggingEnabled(true) // chrome://inspect from a computer
         }
@@ -61,15 +64,21 @@ object Web {
             setAcceptCookie(true)
             setAcceptThirdPartyCookies(webView, true) // Vimeo embeds run in a third-party iframe
         }
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+            WebViewCompat.addDocumentStartJavaScript(webView, ALWAYS_VISIBLE_JS, setOf("*"))
+        } else {
+            DiagLog.add("document-start scripts unsupported, background playback may pause")
+        }
         DiagLog.add("WebView ${WebView.getCurrentWebViewPackage()?.versionName} UA: ${webView.settings.userAgentString}")
         webView.webViewClient = object : WebViewClient() {
-            override fun onPageStarted(view: WebView, url: String?, favicon: android.graphics.Bitmap?) {
+            override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
                 DiagLog.add("page $url")
             }
 
             override fun onPageFinished(view: WebView, url: String?) {
                 CookieManager.getInstance().flush()
                 view.evaluateJavascript(VIMEO_HELPER_JS, null)
+                onPageFinished?.invoke()
             }
 
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
@@ -86,6 +95,8 @@ object Web {
 
     /** Base chrome client: allows DRM-protected video and logs page errors. Subclasses add fullscreen handling. */
     open class ChromeClient : WebChromeClient() {
+        override fun getDefaultVideoPoster(): Bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+
         override fun onPermissionRequest(request: PermissionRequest) {
             val allowed = request.resources.filter { it == PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID }
             if (allowed.isEmpty()) request.deny() else request.grant(allowed.toTypedArray())
@@ -105,6 +116,31 @@ object Web {
     }
 
     /**
+     * Runs before page scripts: the page always believes it is visible and focused, so players (YouTube)
+     * don't pause when the app is in the background or the screen is off.
+     */
+    const val ALWAYS_VISIBLE_JS = """
+(function () {
+  try {
+    var def = function (name, value) {
+      Object.defineProperty(document, name, { get: function () { return value; }, configurable: true });
+    };
+    def('visibilityState', 'visible');
+    def('webkitVisibilityState', 'visible');
+    def('hidden', false);
+    def('webkitHidden', false);
+    document.hasFocus = function () { return true; };
+  } catch (e) {}
+  var block = function (e) { e.stopImmediatePropagation(); };
+  ['visibilitychange', 'webkitvisibilitychange', 'pagehide', 'freeze'].forEach(function (t) {
+    window.addEventListener(t, block, true);
+    document.addEventListener(t, block, true);
+  });
+  window.addEventListener('blur', function (e) { if (e.target === window) e.stopImmediatePropagation(); }, true);
+})();
+"""
+
+    /**
      * Adds a "open directly" button under each embedded Vimeo player, which loads the player as a page of its
      * own. Fallback for embeds that stay black inside the WebView.
      */
@@ -112,32 +148,48 @@ object Web {
 (function () {
   if (window.__aaVimeo) return;
   window.__aaVimeo = true;
+  // A course page mounts dozens of Vimeo players at once, which can exhaust the phone's video decoders
+  // and leave every player black. Only load a player once it is actually on screen.
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      var f = en.target;
+      if (en.isIntersecting && f.dataset.aaSrc && f.getAttribute('src') !== f.dataset.aaSrc) {
+        f.setAttribute('src', f.dataset.aaSrc);
+        console.log('[aa] vimeo load ' + f.dataset.aaSrc);
+      }
+    });
+  }, { rootMargin: '300px' });
   var pairs = [];
   function scan() {
     pairs = pairs.filter(function (p) {
       if (p.frame.isConnected) return true;
+      io.unobserve(p.frame);
       p.button.remove();
       return false;
     });
     document.querySelectorAll('iframe[src*="player.vimeo.com"], iframe[src*="vimeo.com/event"]').forEach(function (f) {
-      if (f.dataset.aaDirect) return;
+      if (f.dataset.aaSrc) return;
       var host = f.parentElement;
-      if (!host || !host.parentElement) return;
-      f.dataset.aaDirect = '1';
+      if (!host) return;
+      f.dataset.aaSrc = f.src;
+      var r = f.getBoundingClientRect();
+      var onScreen = r.width > 0 && r.height > 0 && r.bottom > -300 && r.top < innerHeight + 300;
+      if (!onScreen) f.setAttribute('src', 'about:blank');
+      io.observe(f);
       var b = document.createElement('button');
-      b.textContent = '\u25B6 Video direkt \u00F6ffnen';
-      b.style.cssText = 'display:block;margin:10px auto;padding:10px 18px;border:0;border-radius:22px;' +
-        'background:#1a9ad6;color:#fff;font:600 15px sans-serif;position:relative;z-index:5';
+      b.textContent = '\u2197 Direkt \u00F6ffnen';
+      b.style.cssText = 'position:absolute;top:8px;left:8px;z-index:2147483647;padding:6px 12px;border:0;' +
+        'border-radius:16px;background:rgba(26,154,214,.9);color:#fff;font:600 13px sans-serif;pointer-events:auto';
       b.addEventListener('click', function (e) {
         e.preventDefault();
         e.stopPropagation();
-        var u = new URL(f.src);
+        var u = new URL(f.dataset.aaSrc);
         u.searchParams.set('autoplay', '1');
         location.href = u.toString();
       });
-      host.parentElement.insertBefore(b, host.nextSibling);
+      if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+      host.appendChild(b);
       pairs.push({ frame: f, button: b });
-      console.log('[aa] vimeo iframe ' + f.src);
     });
   }
   scan();

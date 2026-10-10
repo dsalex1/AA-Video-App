@@ -15,8 +15,11 @@ videos, parked or driving (intended for passengers).
   The players' own fullscreen buttons work too.
 - The phone app has the same Akademie/YouTube switch (bottom left). It keeps the status bar and
   navigation buttons visible, hiding them only while a video is in fullscreen.
-- Each embedded Vimeo player gets a "Video direkt öffnen" button that opens the player as its own page
-  (fallback for embeds that stay black in the WebView).
+- Vimeo players load only once they're on screen (a course page mounts dozens, which can exhaust the
+  phone's video decoders). Each gets a "Direkt öffnen" button that opens the player as its own page.
+- Pages always see themselves as visible, and a foreground service keeps the app alive, so YouTube and
+  Vimeo keep playing in the background / with the screen off.
+- Pull down on the phone to reload the page.
 - Troubleshooting: long-press the switch button on the phone to view/share a log of page errors.
 - **Log in once in the phone app** (there's no keyboard on the car). Cookies are shared, so the car
   side is logged in too.
