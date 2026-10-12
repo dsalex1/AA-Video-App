@@ -5,14 +5,13 @@ videos, parked or driving (intended for passengers).
 
 ## How it works
 
-- Registers as an Android Auto **navigation** app – the only app category that gets a raw drawing
-  surface on the car screen.
+- Registers as an Android Auto **POI** app with `MapWithContentTemplate`, which gives the app its own drawing
+  surface (a "map") without being a navigation app, so Google Maps keeps navigating alongside it.
 - Renders a normal `WebView` into a private virtual display that is mirrored onto that surface
-  (`WebSurfaceRenderer` / `CarPresentation`).
-- Taps on the car screen are forwarded to the page. Buttons on the right: back, home, reload and a
-  switch between Akademie and YouTube; map buttons: pan mode (drag to scroll), page up/down and
-  fullscreen (blows the largest video on the page up to the whole screen; tap again to restore).
-  The players' own fullscreen buttons work too.
+  (`WebSurfaceRenderer` / `CarPresentation`). The car page follows the phone (`CarSync`): same page, and a
+  video put into fullscreen on the phone continues fullscreen in the car.
+- Taps on the car screen are forwarded to the page; dragging scrolls. Buttons: Skip Silence and the
+  Akademie/YouTube switch.
 - The phone app has the same Akademie/YouTube switch (bottom left). It keeps the status bar and
   navigation buttons visible, hiding them only while a video is in fullscreen.
 - Vimeo players load only once they're on screen (a course page mounts dozens, which can exhaust the
@@ -61,4 +60,4 @@ Console, phone) and checks each one. By hand:
 5. Testers accept the opt-in link and install from Play; the app then shows up in Android Auto.
 
 Note: Google doesn't review internal-testing builds for Android Auto's quality rules. Closed, open
-and production tracks would be rejected (this isn't a real navigation app, and video isn't allowed).
+and production tracks would be rejected (this isn't a real POI app, and video isn't allowed).

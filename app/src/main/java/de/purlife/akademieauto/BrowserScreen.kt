@@ -7,14 +7,17 @@ import androidx.car.app.Screen
 import androidx.car.app.model.Action
 import androidx.car.app.model.ActionStrip
 import androidx.car.app.model.CarIcon
+import androidx.car.app.model.MessageTemplate
 import androidx.car.app.model.Template
-import androidx.car.app.navigation.model.NavigationTemplate
+import androidx.car.app.navigation.model.MapController
+import androidx.car.app.navigation.model.MapWithContentTemplate
 import androidx.core.graphics.drawable.IconCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 
 /**
- * Uses the navigation template only for its full-screen drawing surface; the web page is rendered onto it.
+ * A POI app, not navigation: Android Auto allows only one active navigation app, so Google Maps keeps navigating.
+ * MapWithContentTemplate gives POI apps their own drawing surface ("map"); the web page is rendered onto it.
  */
 class BrowserScreen(carContext: CarContext) : Screen(carContext) {
     private val renderer = WebSurfaceRenderer(carContext)
@@ -49,9 +52,13 @@ class BrowserScreen(carContext: CarContext) : Screen(carContext) {
                 invalidate()
             })
         }
-        return NavigationTemplate.Builder()
+        return MapWithContentTemplate.Builder()
+            .setContentTemplate(MessageTemplate.Builder(carContext.getString(R.string.app_name)).build())
             .setActionStrip(actions.build())
-            .setMapActionStrip(ActionStrip.Builder().addAction(Action.PAN).build()) // drag to scroll; no visible button
+            .setMapController(
+                // Drag to scroll; no visible button.
+                MapController.Builder().setMapActionStrip(ActionStrip.Builder().addAction(Action.PAN).build()).build()
+            )
             .build()
     }
 

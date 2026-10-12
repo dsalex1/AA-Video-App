@@ -11,8 +11,9 @@ import androidx.car.app.SurfaceContainer
 import androidx.core.os.HandlerCompat
 
 /**
- * Mirrors a [CarPresentation] onto the surface Android Auto hands to navigation apps, via a private virtual
- * display. The page fills the whole surface, like a map, with the buttons floating on top. Car touch input is forwarded to the page. Follows the phone via [CarSync].
+ * Mirrors a [CarPresentation] onto the map surface Android Auto hands to the app (MapWithContentTemplate), via a
+ * private virtual display. The page fills the whole surface, like a map, with the buttons floating on top. Car touch
+ * input is forwarded to the page. Follows the phone via [CarSync].
  */
 class WebSurfaceRenderer(private val context: Context) : SurfaceCallback, CarSync.Car {
     private val main = Handler(Looper.getMainLooper())
