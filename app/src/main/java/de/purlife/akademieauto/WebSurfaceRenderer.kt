@@ -25,11 +25,6 @@ class WebSurfaceRenderer(private val context: Context) : SurfaceCallback, CarSyn
     var site = Site.load(context)
         private set
 
-    /** A video fills the screen; the screen then shows only the button to leave it. */
-    var fullscreen = false
-        private set
-    var onFullscreenChanged: (() -> Unit)? = null
-
     override fun onSurfaceAvailable(surfaceContainer: SurfaceContainer) {
         val surface = surfaceContainer.surface ?: return
         width = surfaceContainer.width
@@ -45,7 +40,7 @@ class WebSurfaceRenderer(private val context: Context) : SurfaceCallback, CarSyn
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_PRESENTATION or DisplayManager.VIRTUAL_DISPLAY_FLAG_OWN_CONTENT_ONLY,
             )
             virtualDisplay = display
-            presentation = CarPresentation(context, display.display, site).also { it.show() }
+            presentation = CarPresentation(context, display.display, site, ::switchSite).also { it.show() }
             CarSync.car = this
         }
     }
@@ -71,6 +66,7 @@ class WebSurfaceRenderer(private val context: Context) : SurfaceCallback, CarSyn
     fun switchSite() {
         site = site.other
         Site.save(context, site)
+        presentation?.setSite(site)
         setFullscreen(false)
         presentation?.webView?.loadUrl(site.homeUrl)
     }
@@ -107,9 +103,6 @@ class WebSurfaceRenderer(private val context: Context) : SurfaceCallback, CarSyn
     private fun setFullscreen(on: Boolean, key: String? = null) {
         if (!on) main.removeCallbacksAndMessages(RETRY_TOKEN)
         presentation?.setVideoFullscreen(on, key)
-        if (fullscreen == on) return
-        fullscreen = on
-        onFullscreenChanged?.invoke()
     }
 
     fun release() {

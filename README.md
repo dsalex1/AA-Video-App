@@ -11,7 +11,11 @@ videos, parked or driving (intended for passengers).
   (`WebSurfaceRenderer` / `CarPresentation`). The car page follows the phone (`CarSync`): same page, and a
   video put into fullscreen on the phone continues fullscreen in the car.
 - Taps on the car screen are forwarded to the page; dragging scrolls. Buttons: Skip Silence and the
-  Akademie/YouTube switch.
+  Akademie/YouTube switch, drawn by the app itself (no Android Auto button strip).
+- The template always shows a content card top left (it can't be removed, made smaller or transparent, in any
+  car app category). The page therefore starts below a slim top band holding the empty card and the buttons, so
+  nothing of it is covered. A fullscreen video uses the whole screen; the buttons fade out after 4 s and the
+  next tap brings them back.
 - The phone app has the same Akademie/YouTube switch (bottom left). It keeps the status bar and
   navigation buttons visible, hiding them only while a video is in fullscreen.
 - Vimeo players load only once they're on screen (a course page mounts dozens, which can exhaust the
@@ -22,7 +26,7 @@ videos, parked or driving (intended for passengers).
 - Media notification / lock-screen controls (title, play/pause, −10 s / +30 s, seek bar) for whatever plays in any
   page or embedded player; also reacts to headset and steering-wheel media buttons.
 - **Skip Silence**: the [Skip Silence](https://github.com/vantezzen/skip-silence) browser extension (MIT) runs in
-  every page and embedded player. Its settings popup opens from the "⏩ Skip Silence" button (phone) or the ⏩ action
+  every page and embedded player. Its settings popup opens from the "⏩ Skip Silence" button (phone) or the ⏩ button
   (car). Source is vendored in `skip-silence/upstream`; `skip-silence/android` replaces the extension APIs with
   the app's `AASkip` bridge. Rebuild the bundles in `app/src/main/assets/skipsilence` with `skip-silence/build.sh`.
 - Troubleshooting: long-press the switch button on the phone to view/share a log of page errors.

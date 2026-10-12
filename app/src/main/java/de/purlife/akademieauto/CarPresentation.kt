@@ -3,21 +3,31 @@ package de.purlife.akademieauto
 import android.app.Presentation
 import android.content.Context
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.SystemClock
 import android.view.Display
+import android.view.Gravity
 import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
 import android.widget.FrameLayout
+import android.widget.ImageButton
+import android.widget.ImageView
+import android.widget.LinearLayout
 
 /**
  * The web page, rendered onto the car's virtual display. Dark theme, so pages see prefers-color-scheme: dark
  * (YouTube goes dark).
  */
-class CarPresentation(outerContext: Context, display: Display, private val initialSite: Site) :
+class CarPresentation(
+    outerContext: Context,
+    display: Display,
+    private val initialSite: Site,
+    private val onSwitchSite: () -> Unit,
+) :
     Presentation(outerContext, display, android.R.style.Theme_Material_NoActionBar_Fullscreen) {
     private lateinit var root: FrameLayout
     private lateinit var content: FrameLayout
@@ -27,6 +37,10 @@ class CarPresentation(outerContext: Context, display: Display, private val initi
     private var settingsView: WebView? = null
     private var customView: View? = null
     private var customViewCallback: android.webkit.WebChromeClient.CustomViewCallback? = null
+    private lateinit var buttons: LinearLayout
+    private lateinit var siteButton: ImageButton
+    private val hideButtons = Runnable { buttons.animate().alpha(0f) }
+    private var videoFullscreen = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,7 +48,18 @@ class CarPresentation(outerContext: Context, display: Display, private val initi
         content = FrameLayout(context)
         webView = BackgroundWebView(context)
         content.addView(webView, matchParent())
-        root.addView(content, matchParent())
+        // Android Auto's content card sits top left; the page starts below it, so nothing of the page is covered.
+        root.addView(content, matchParent().apply { topMargin = dp(BAND_DP) })
+        buttons = LinearLayout(context).apply {
+            addView(roundButton(R.drawable.ic_forward) { toggleSkipSilenceSettings() })
+            siteButton = roundButton(0) { onSwitchSite() }
+            addView(siteButton)
+        }
+        root.addView(buttons, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(BAND_DP)).apply {
+            gravity = Gravity.TOP or Gravity.END
+            marginEnd = dp(8)
+        })
+        setSite(initialSite)
         setContentView(root)
 
         Web.configure(webView)
@@ -42,9 +67,10 @@ class CarPresentation(outerContext: Context, display: Display, private val initi
             override fun onShowCustomView(view: View, callback: CustomViewCallback) {
                 customView = view
                 customViewCallback = callback
-                // Fullscreen video covers the whole car screen, ignoring the action-strip insets.
-                root.addView(view, matchParent())
+                // Fullscreen video covers the whole car screen, below the buttons.
+                root.addView(view, root.indexOfChild(buttons), matchParent())
                 content.visibility = View.GONE
+                showButtons()
             }
 
             override fun onHideCustomView() {
@@ -52,6 +78,7 @@ class CarPresentation(outerContext: Context, display: Display, private val initi
                 customView = null
                 customViewCallback = null
                 content.visibility = View.VISIBLE
+                showButtons()
             }
         }
         webView.loadUrl(initialSite.homeUrl)
@@ -60,10 +87,34 @@ class CarPresentation(outerContext: Context, display: Display, private val initi
     /** Our full-screen video styling (see [Web.fullscreenJs]); off also leaves the page's own fullscreen. */
     fun setVideoFullscreen(on: Boolean, key: String? = null) {
         if (!on) exitFullscreen()
+        if (videoFullscreen != on) {
+            videoFullscreen = on
+            (content.layoutParams as FrameLayout.LayoutParams).topMargin = if (on) 0 else dp(BAND_DP)
+            content.requestLayout()
+            showButtons()
+        }
         webView.evaluateJavascript(Web.fullscreenJs(on, key), null)
     }
 
+    /** The switch shows the site it switches to. */
+    fun setSite(site: Site) {
+        siteButton.setImageResource(if (site.other == Site.YOUTUBE) R.drawable.ic_site_youtube else R.drawable.ic_site_akademie)
+    }
+
+    /** Full-screen video: the page uses the whole screen and the buttons fade out until the next tap. */
+    private fun showButtons() {
+        buttons.removeCallbacks(hideButtons)
+        buttons.animate().cancel()
+        buttons.alpha = 1f
+        if (customView != null || videoFullscreen) buttons.postDelayed(hideButtons, HIDE_MS)
+    }
+
     fun tap(x: Float, y: Float) {
+        if (buttons.alpha < 1f) {
+            showButtons() // the first tap only brings the buttons back
+            return
+        }
+        showButtons()
         val target = window?.decorView ?: return
         val downTime = SystemClock.uptimeMillis()
         for (action in intArrayOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
@@ -110,6 +161,30 @@ class CarPresentation(outerContext: Context, display: Display, private val initi
         settingsView?.let(SkipSilence::closeSettings)
         webView.destroy()
         dismiss()
+    }
+
+    private fun dp(v: Int) = (v * context.resources.displayMetrics.density).toInt()
+
+    private fun roundButton(icon: Int, onClick: () -> Unit) = ImageButton(context).apply {
+        background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(0xE6202124.toInt())
+            setStroke(dp(1), 0xFF5F6368.toInt())
+        }
+        if (icon != 0) setImageResource(icon)
+        scaleType = ImageView.ScaleType.CENTER
+        setOnClickListener { onClick() }
+        layoutParams = LinearLayout.LayoutParams(dp(BUTTON_DP), dp(BUTTON_DP)).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            marginStart = dp(8)
+        }
+    }
+
+    private companion object {
+        /** Height of Android Auto's content card incl. its margins, at the car screen's density. */
+        const val BAND_DP = 92
+        const val BUTTON_DP = 52
+        const val HIDE_MS = 4000L
     }
 
     private fun matchParent() =
