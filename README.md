@@ -47,6 +47,8 @@ removes the title from the car screen.
 3. In Android Auto → Customise launcher, enable "Akademie Auto".
 
 ### B) Play Console internal testing
+Easiest: `bash scripts/play-setup.sh` walks through all of the steps below (key, secrets, CI build, Play
+Console, phone) and checks each one. By hand:
 1. Create an upload keystore:
    `keytool -genkey -v -keystore release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload`
 2. Add these repository secrets: `SIGNING_KEYSTORE_BASE64` (`base64 -w0 release.jks`),
