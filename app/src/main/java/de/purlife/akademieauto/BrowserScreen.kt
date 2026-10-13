@@ -40,13 +40,18 @@ class BrowserScreen(carContext: CarContext) : Screen(carContext) {
         })
     }
 
-    /** "YouTube · Lektion 3: Anat…": the site and the start of what's playing, short enough for one line. */
+    /**
+     * "YouTube · Lektion 3: A…": the site and the start of what's playing, short enough for one line. Non-breaking
+     * spaces, so Android Auto never wraps between the two.
+     */
     private fun cardText(): String {
-        val title = MediaHub.current?.title?.trim().orEmpty()
         val site = renderer.pageSite.label
+        // "Akademie_HP_V65_…" → "HP_V65_…": the site is named already.
+        val title = MediaHub.current?.title?.trim().orEmpty()
+            .removePrefix(site).trimStart('_', '-', ' ', ':').replace(' ', '\u00A0')
         if (title.isEmpty()) return site
         val room = CARD_CHARS - site.length - 3
-        return site + " · " + if (title.length <= room) title else title.take(room - 1).trimEnd() + "…"
+        return site + "\u00A0·\u00A0" + if (title.length <= room) title else title.take(room - 1).trimEnd('\u00A0') + "…"
     }
 
     /**
@@ -65,7 +70,7 @@ class BrowserScreen(carContext: CarContext) : Screen(carContext) {
     }
 
     private companion object {
-        /** What fits on one line of the card; longer text wraps and makes the card taller. */
-        const val CARD_CHARS = 28
+        /** What safely fits on one line of the card (about 25 on a Ford Focus); longer text makes the card taller. */
+        const val CARD_CHARS = 22
     }
 }

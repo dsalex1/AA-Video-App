@@ -87,6 +87,7 @@ class MainActivity : ComponentActivity() {
         val stillButton = roundButton {}.apply {
             setImageResource(R.drawable.ic_still)
             contentDescription = getString(R.string.car_still)
+            alpha = if (MediaHub.stillsOn) 1f else DIMMED
             setOnClickListener { MediaHub.toggleStills(); alpha = if (MediaHub.stillsOn) 1f else DIMMED }
         }
         CarConnection(this).type.observe(this) { type ->

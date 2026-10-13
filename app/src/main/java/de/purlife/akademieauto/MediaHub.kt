@@ -51,9 +51,9 @@ object MediaHub {
         listeners.toList().forEach { it() }
     }
 
-    /** Whether the album art shows stills of the video at all (they cost a little battery). */
+    /** Whether the album art shows stills of the video at all (they cost a little battery); off by default. */
     @Volatile
-    var stillsOn = true
+    var stillsOn = false
         private set
 
     fun toggleStills() {
