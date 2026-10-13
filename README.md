@@ -13,9 +13,9 @@ videos, parked or driving (intended for passengers).
 - Taps on the car screen are forwarded to the page; dragging scrolls. Buttons: Skip Silence and the
   Akademie/YouTube switch, drawn by the app itself (no Android Auto button strip).
 - The template always shows a content card top left (it can't be removed, made smaller or transparent, in any
-  car app category). The page therefore starts below a slim top band holding the empty card and the buttons, so
-  nothing of it is covered. A fullscreen video uses the whole screen; the buttons fade out after 4 s and the
-  next tap brings them back.
+  car app category, and content inside it is limited to text and small images). It shows the site and the start
+  of the playing video's title ("YouTube · Big Buck Bunny…"), kept to one line. The page starts halfway down the
+  card and the buttons; in fullscreen video the buttons fade out after 4 s and the next tap brings them back.
 - The phone app has the same Akademie/YouTube switch (bottom left). It keeps the status bar and
   navigation buttons visible, hiding them only while a video is in fullscreen.
 - Vimeo players load only once they're on screen (a course page mounts dozens, which can exhaust the

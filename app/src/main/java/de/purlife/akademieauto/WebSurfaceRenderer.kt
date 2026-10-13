@@ -25,6 +25,12 @@ class WebSurfaceRenderer(private val context: Context) : SurfaceCallback, CarSyn
     var site = Site.load(context)
         private set
 
+    /** The site of the page shown, which may differ from [site] after following the phone. */
+    val pageSite get() = presentation?.webView?.url?.let(Site::of) ?: site
+
+    /** Called when another page (or title) shows up. */
+    var onPageChanged: (() -> Unit)? = null
+
     override fun onSurfaceAvailable(surfaceContainer: SurfaceContainer) {
         val surface = surfaceContainer.surface ?: return
         width = surfaceContainer.width
@@ -40,7 +46,10 @@ class WebSurfaceRenderer(private val context: Context) : SurfaceCallback, CarSyn
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_PRESENTATION or DisplayManager.VIRTUAL_DISPLAY_FLAG_OWN_CONTENT_ONLY,
             )
             virtualDisplay = display
-            presentation = CarPresentation(context, display.display, site, ::switchSite).also { it.show() }
+            presentation = CarPresentation(context, display.display, site, ::switchSite) {
+                presentation?.setSite(pageSite)
+                onPageChanged?.invoke()
+            }.also { it.show() }
             CarSync.car = this
         }
     }
@@ -64,7 +73,7 @@ class WebSurfaceRenderer(private val context: Context) : SurfaceCallback, CarSyn
 
     /** The car only; the phone keeps its page (and the car follows it again on its next navigation). */
     fun switchSite() {
-        site = site.other
+        site = pageSite.other
         Site.save(context, site)
         presentation?.setSite(site)
         setFullscreen(false)

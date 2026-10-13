@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.content.pm.ApplicationInfo
+import android.net.Uri
 import android.util.Log
 import android.webkit.ConsoleMessage
 import android.webkit.CookieManager
@@ -31,6 +32,9 @@ enum class Site(val label: String, val homeUrl: String) {
 
     companion object {
         private const val PREFS = "settings"
+
+        /** The site a page belongs to (the phone may have navigated anywhere). */
+        fun of(url: String): Site = if (Uri.parse(url).host.orEmpty().contains("youtube.")) YOUTUBE else AKADEMIE
         private const val KEY_SITE = "site"
 
         fun load(context: Context): Site =

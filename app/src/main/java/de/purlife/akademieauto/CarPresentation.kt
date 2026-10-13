@@ -27,6 +27,7 @@ class CarPresentation(
     display: Display,
     private val initialSite: Site,
     private val onSwitchSite: () -> Unit,
+    private val onPageChanged: () -> Unit,
 ) :
     Presentation(outerContext, display, android.R.style.Theme_Material_NoActionBar_Fullscreen) {
     private lateinit var root: FrameLayout
@@ -48,14 +49,14 @@ class CarPresentation(
         content = FrameLayout(context)
         webView = BackgroundWebView(context)
         content.addView(webView, matchParent())
-        // Android Auto's content card sits top left; the page starts below it, so nothing of the page is covered.
-        root.addView(content, matchParent().apply { topMargin = dp(BAND_DP) })
+        // Android Auto's content card sits top left; the page starts halfway down it and the buttons.
+        root.addView(content, matchParent().apply { topMargin = dp(TOP_DP) })
         buttons = LinearLayout(context).apply {
             addView(roundButton(R.drawable.ic_forward) { toggleSkipSilenceSettings() })
             siteButton = roundButton(0) { onSwitchSite() }
             addView(siteButton)
         }
-        root.addView(buttons, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(BAND_DP)).apply {
+        root.addView(buttons, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(CARD_DP)).apply {
             gravity = Gravity.TOP or Gravity.END
             marginEnd = dp(8)
         })
@@ -64,11 +65,13 @@ class CarPresentation(
 
         Web.configure(webView)
         webView.webChromeClient = object : Web.ChromeClient() {
+            override fun onReceivedTitle(view: WebView, title: String?) = onPageChanged()
+
             override fun onShowCustomView(view: View, callback: CustomViewCallback) {
                 customView = view
                 customViewCallback = callback
-                // Fullscreen video covers the whole car screen, below the buttons.
-                root.addView(view, root.indexOfChild(buttons), matchParent())
+                // Fullscreen video gets the same area as the page, below the buttons.
+                root.addView(view, root.indexOfChild(buttons), matchParent().apply { topMargin = dp(TOP_DP) })
                 content.visibility = View.GONE
                 showButtons()
             }
@@ -89,8 +92,6 @@ class CarPresentation(
         if (!on) exitFullscreen()
         if (videoFullscreen != on) {
             videoFullscreen = on
-            (content.layoutParams as FrameLayout.LayoutParams).topMargin = if (on) 0 else dp(BAND_DP)
-            content.requestLayout()
             showButtons()
         }
         webView.evaluateJavascript(Web.fullscreenJs(on, key), null)
@@ -182,7 +183,10 @@ class CarPresentation(
 
     private companion object {
         /** Height of Android Auto's content card incl. its margins, at the car screen's density. */
-        const val BAND_DP = 92
+        const val CARD_DP = 92
+
+        /** Where the page starts: about half the buttons (centred on the card) are over it. */
+        const val TOP_DP = 46
         const val BUTTON_DP = 52
         const val HIDE_MS = 4000L
     }
