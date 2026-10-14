@@ -121,12 +121,11 @@ object Web {
      */
     fun continueVideo(webView: WebView, entry: Progress.Entry) {
         if (webView.url != entry.pageUrl) webView.loadUrl(entry.pageUrl)
-        val js = revealJs(entry.key) +
+        val js = revealJs(entry.key, entry.section) +
             "window.__aaMedia && window.__aaMedia('*', ${org.json.JSONObject.quote("playat:${entry.key}|${entry.positionS}")});"
         repeat(CONTINUE_TRIES) { i ->
             webView.postDelayed({
-                val now = MediaHub.current
-                if (now == null || now.key != entry.key || !now.playing) webView.evaluateJavascript(js, null)
+                if (!MediaHub.isPlaying(entry.key)) webView.evaluateJavascript(js, null)
             }, (i + 1) * 1000L)
         }
         DiagLog.add("continue ${entry.key} at ${entry.positionS} s on ${entry.pageUrl}")
@@ -134,15 +133,42 @@ object Web {
 
     private const val CONTINUE_TRIES = 15
 
-    /** Scrolls to the player of video [key] and loads it (see VIMEO_HELPER_JS, which loads players lazily). */
-    fun revealJs(key: String) = """
-(function (K) {
-  document.querySelectorAll('iframe').forEach(function (f) {
-    if ((f.dataset.aaSrc || f.src || '').indexOf(K) < 0) return;
-    if (!f.__aaRevealed) { f.__aaRevealed = true; f.scrollIntoView({ block: 'center' }); }
-    if (f.dataset.aaSrc && f.getAttribute('src') !== f.dataset.aaSrc) f.setAttribute('src', f.dataset.aaSrc);
-  });
-})(${org.json.JSONObject.quote(key)});
+    /**
+     * Brings video [key]'s player into view on an Akademie course page: selects its [section] (see [SECTION_JS]), opens
+     * its collapsed module, scrolls to it and loads it (VIMEO_HELPER_JS loads players lazily). Run repeatedly.
+     */
+    fun revealJs(key: String, section: String = "") = """
+(function (K, S) {
+  var f = [].find.call(document.querySelectorAll('iframe'), function (x) { return (x.dataset.aaSrc || x.src || '').indexOf(K) >= 0; });
+  if (!f) {
+    // Clicked until it is selected: right after loading the page ignores clicks.
+    var tab = S && $SECTION_JS !== S && [].find.call(document.querySelectorAll('[tabindex]'), function (t) {
+      return t.textContent.trim() === S && t.childElementCount <= 2;
+    });
+    if (tab) tab.click();
+    return;
+  }
+  for (var el = f.parentElement; el && el.querySelectorAll('iframe').length === 1; el = el.parentElement) {
+    var toggle = el.querySelector('button[aria-label$=" öffnen"], button[aria-label$=" schließen"]');
+    if (!toggle) continue;
+    if (/ öffnen$/.test(toggle.getAttribute('aria-label'))) { toggle.click(); return; }
+    break;
+  }
+  if (!f.__aaRevealed) { f.__aaRevealed = true; f.scrollIntoView({ block: 'center' }); }
+  if (f.dataset.aaSrc && f.getAttribute('src') !== f.dataset.aaSrc) f.setAttribute('src', f.dataset.aaSrc);
+})(${org.json.JSONObject.quote(key)}, ${org.json.JSONObject.quote(section)});
+"""
+
+    /** The course section selected on an Akademie page (the card marked "Ausgewählt"), or "". */
+    const val SECTION_JS = """
+(function () {
+  var s = [].find.call(document.querySelectorAll('*'), function (e) { return !e.childElementCount && e.textContent.trim() === 'Ausgewählt'; });
+  for (var c = s; c; c = c.parentElement) {
+    var n = [].find.call(c.querySelectorAll('*'), function (e) { return !e.childElementCount && /^\d+$/.test(e.textContent.trim()); });
+    if (n) return n.textContent.trim();
+  }
+  return '';
+})()
 """
 
     /**

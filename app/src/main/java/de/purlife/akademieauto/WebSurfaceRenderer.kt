@@ -108,7 +108,9 @@ class WebSurfaceRenderer(private val context: Context) : SurfaceCallback, CarSyn
         repeat(RETRIES) { i ->
             HandlerCompat.postDelayed(main, {
                 val p = presentation ?: return@postDelayed
-                if (MediaHub.current?.let { it.key == key && it.playing } == true) return@postDelayed
+                if (MediaHub.isPlaying(key)) return@postDelayed
+                // The phone's section isn't part of the address; Progress knows it once the video played there.
+                p.webView.evaluateJavascript(Web.revealJs(key, Progress.entry(key)?.section.orEmpty()), null)
                 val at = positionS + if (live) (SystemClock.elapsedRealtime() - start) / 1000.0 else 0.0
                 p.setVideoFullscreen(true, key)
                 p.webView.evaluateJavascript(

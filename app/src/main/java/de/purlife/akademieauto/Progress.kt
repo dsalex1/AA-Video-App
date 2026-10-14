@@ -9,7 +9,8 @@ import org.json.JSONObject
  * [Web.MEDIA_JS]), and the last unfinished video can be reopened with the continue buttons.
  */
 object Progress {
-    data class Entry(val key: String, val positionS: Double, val pageUrl: String, val title: String)
+    /** [section]: the course section selected on the page (it isn't part of the address), or empty. */
+    data class Entry(val key: String, val positionS: Double, val pageUrl: String, val title: String, val section: String)
 
     private const val MIN_S = 10.0 // less isn't worth continuing
     private const val END_S = 20.0 // this close to the end counts as finished (credits, outro)
@@ -35,8 +36,7 @@ object Progress {
     /** There is an unfinished video, and it isn't the one playing right now. */
     fun isResumable(): Boolean {
         val last = last ?: return false
-        val now = MediaHub.current
-        return now == null || now.key != last.key || !now.playing
+        return !MediaHub.isPlaying(last.key)
     }
 
     /** Records [state] of a video shown on [pageUrl]; returns true when it just finished. */
@@ -52,16 +52,27 @@ object Progress {
         }
         if (position < MIN_S || pageUrl == null) return false
         val isNew = prefs.getString(LAST, null) != state.key
-        val json = JSONObject().put("p", position).put("u", pageUrl).put("t", state.title).toString()
-        prefs.edit().putString(state.key, json).putString(LAST, state.key).apply()
+        // Keeps the section once known.
+        val json = (json(state.key) ?: JSONObject()).put("p", position).put("u", pageUrl).put("t", state.title)
+        prefs.edit().putString(state.key, json.toString()).putString(LAST, state.key).apply()
         if (isNew) notifyListeners()
         return false
     }
 
-    private fun entry(key: String): Entry? {
-        val o = prefs.getString(key, null)?.let { runCatching { JSONObject(it) }.getOrNull() } ?: return null
-        return Entry(key, o.optDouble("p"), o.optString("u"), o.optString("t"))
+    /** [key] is saved, but not yet its section (see [Web.SECTION_JS]). */
+    fun needsSection(key: String): Boolean = json(key)?.has("s") == false
+
+    fun setSection(key: String, section: String) {
+        val o = json(key) ?: return
+        prefs.edit().putString(key, o.put("s", section).toString()).apply()
     }
+
+    fun entry(key: String): Entry? {
+        val o = json(key) ?: return null
+        return Entry(key, o.optDouble("p"), o.optString("u"), o.optString("t"), o.optString("s"))
+    }
+
+    private fun json(key: String) = prefs.getString(key, null)?.let { runCatching { JSONObject(it) }.getOrNull() }
 
     private fun notifyListeners() = listeners.toList().forEach { it() }
 }

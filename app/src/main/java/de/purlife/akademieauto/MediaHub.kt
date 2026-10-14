@@ -106,8 +106,22 @@ object MediaHub {
         current = state
         val finished = Progress.update(state, pageUrl)
         listeners.toList().forEach { it() }
+        // A player removed while playing (other page, collapsed accordion) never reports a pause; let listeners
+        // re-check once its reports should have arrived (see isPlaying).
+        main.removeCallbacks(notifyListeners)
+        if (state.playing) main.postDelayed(notifyListeners, STALE_MS + 1000)
         return finished
     }
+
+    private val notifyListeners = Runnable { listeners.toList().forEach { it() } }
+
+    /** [current] plays and is still reporting (every 5 s while playing, see MEDIA_JS). */
+    fun isPlaying(key: String): Boolean {
+        val now = current ?: return false
+        return now.key == key && now.playing && SystemClock.elapsedRealtime() - now.updatedAt < STALE_MS
+    }
+
+    private const val STALE_MS = 12_000L
 
     /** The JavaScript interface "AAMedia" of one WebView (see [Web.MEDIA_JS]); knows the page it reports from. */
     class Bridge(webView: WebView) {
@@ -131,6 +145,9 @@ object MediaHub {
             main.post {
                 val view = webView.get()
                 if (onUpdate(state, view?.url)) view?.evaluateJavascript(Web.markDoneJs(state.key), null)
+                else if (Progress.needsSection(state.key)) view?.evaluateJavascript(Web.SECTION_JS) { section ->
+                    Progress.setSection(state.key, section.trim('"'))
+                }
             }
         }
 
