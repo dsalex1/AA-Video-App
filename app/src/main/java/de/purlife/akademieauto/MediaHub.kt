@@ -19,6 +19,7 @@ object MediaHub {
     data class State(
         val frameId: String,
         val playing: Boolean,
+        val ended: Boolean,
         val title: String,
         val artist: String,
         val positionMs: Long,
@@ -26,6 +27,8 @@ object MediaHub {
         /** Which video this is, the same in the phone's and the car's WebView (see [Web.MEDIA_JS]). */
         val key: String,
         val updatedAt: Long,
+        /** The WebView it plays in (identity hash), see [pageChanged]. */
+        val owner: Int,
     )
 
     private val main = Handler(Looper.getMainLooper())
@@ -66,7 +69,7 @@ object MediaHub {
         zoom = ZOOMS[(ZOOMS.indexOf(zoom) + 1) % ZOOMS.size]
     }
 
-    /** Latest still of the current frame's video, see [JsBridge.frame]. */
+    /** Latest still of the current frame's video, see [Bridge.frame]. */
     var still: Bitmap? = null
         private set
 
@@ -86,31 +89,54 @@ object MediaHub {
         webViews.forEach { it.get()?.evaluateJavascript(js, null) }
     }
 
-    private fun onUpdate(state: State) {
-        val previous = current
-        // Follow whichever frame is playing; ignore pauses from frames that aren't the current one.
-        if (!state.playing && previous != null && previous.frameId != state.frameId) return
-        if (previous?.frameId != state.frameId) still = null
-        current = state
+    /** [webView] went to another page, so its video stopped (without reporting a pause). */
+    fun pageChanged(webView: WebView) {
+        val state = current ?: return
+        if (state.owner != System.identityHashCode(webView) || !state.playing) return
+        current = state.copy(playing = false)
         listeners.toList().forEach { it() }
     }
 
-    object JsBridge {
+    /** Returns true when the video just finished (see [Progress.update]). */
+    private fun onUpdate(state: State, pageUrl: String?): Boolean {
+        val previous = current
+        // Follow whichever frame is playing; ignore pauses from frames that aren't the current one.
+        if (!state.playing && previous != null && previous.frameId != state.frameId) return false
+        if (previous?.frameId != state.frameId) still = null
+        current = state
+        val finished = Progress.update(state, pageUrl)
+        listeners.toList().forEach { it() }
+        return finished
+    }
+
+    /** The JavaScript interface "AAMedia" of one WebView (see [Web.MEDIA_JS]); knows the page it reports from. */
+    class Bridge(webView: WebView) {
+        private val webView = WeakReference(webView)
+
         @JavascriptInterface
         fun update(frameId: String, json: String) {
             val o = runCatching { JSONObject(json) }.getOrNull() ?: return
             val state = State(
                 frameId = frameId,
                 playing = o.optBoolean("playing"),
+                ended = o.optBoolean("ended"),
                 title = o.optString("title").cleanTitle(),
                 artist = o.optString("artist"),
                 positionMs = (o.optDouble("position", 0.0) * 1000).toLong(),
                 durationMs = (o.optDouble("duration", 0.0) * 1000).toLong(),
                 key = o.optString("key"),
                 updatedAt = SystemClock.elapsedRealtime(),
+                owner = System.identityHashCode(webView.get()),
             )
-            main.post { onUpdate(state) }
+            main.post {
+                val view = webView.get()
+                if (onUpdate(state, view?.url)) view?.evaluateJavascript(Web.markDoneJs(state.key), null)
+            }
         }
+
+        /** Where the video [key] was left off, see [Progress]. */
+        @JavascriptInterface
+        fun resumeAt(key: String): Double = Progress.positionS(key)
 
         @JavascriptInterface
         fun zoom(): Float = zoom

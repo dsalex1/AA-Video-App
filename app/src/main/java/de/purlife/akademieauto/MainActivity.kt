@@ -39,6 +39,12 @@ class MainActivity : ComponentActivity() {
     private lateinit var refresh: SwipeRefreshLayout
     private lateinit var switchButton: ImageButton
     private lateinit var buttonRow: LinearLayout
+    private lateinit var resumeButton: ImageButton
+
+    /** Shown while there is an unfinished video that isn't the one playing. */
+    private val updateResumeButton = {
+        resumeButton.visibility = if (Progress.isResumable()) View.VISIBLE else View.GONE
+    }
     private lateinit var site: Site
     private var customView: View? = null
     private var customViewCallback: android.webkit.WebChromeClient.CustomViewCallback? = null
@@ -53,6 +59,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         site = Site.load(this)
+        Progress.init(this)
         root = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
         webView = BackgroundWebView(this)
         refresh = SwipeRefreshLayout(this).apply {
@@ -90,6 +97,11 @@ class MainActivity : ComponentActivity() {
             alpha = if (MediaHub.stillsOn) 1f else DIMMED
             setOnClickListener { MediaHub.toggleStills(); alpha = if (MediaHub.stillsOn) 1f else DIMMED }
         }
+        // The last unfinished video: reopens its page and continues it (see Progress).
+        resumeButton = roundButton { Progress.last?.let { Web.continueVideo(webView, it) } }.apply {
+            setImageResource(R.drawable.ic_resume)
+            contentDescription = getString(R.string.resume)
+        }
         CarConnection(this).type.observe(this) { type ->
             val visibility = if (type == CarConnection.CONNECTION_TYPE_PROJECTION) View.VISIBLE else View.GONE
             carTextButton.visibility = visibility
@@ -98,7 +110,7 @@ class MainActivity : ComponentActivity() {
         buttonRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             val size = (48 * density).toInt()
-            for (button in listOf(switchButton, skipSilenceButton, carTextButton, stillButton)) {
+            for (button in listOf(switchButton, resumeButton, skipSilenceButton, carTextButton, stillButton)) {
                 addView(button, LinearLayout.LayoutParams(size, size).apply { marginEnd = (10 * density).toInt() })
             }
         }
@@ -111,6 +123,9 @@ class MainActivity : ComponentActivity() {
             },
         )
         updateSwitchLabel()
+        Progress.addListener(updateResumeButton)
+        MediaHub.addListener(updateResumeButton)
+        updateResumeButton()
         setContentView(root)
         setUpSystemBars() // needs the window's decor view, which setContentView creates
 
@@ -253,6 +268,8 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        Progress.removeListener(updateResumeButton)
+        MediaHub.removeListener(updateResumeButton)
         if (isFinishing) PlaybackService.stop(this)
         webView.destroy()
         super.onDestroy()

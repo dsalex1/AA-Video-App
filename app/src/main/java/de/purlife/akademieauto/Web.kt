@@ -71,7 +71,8 @@ object Web {
             setAcceptThirdPartyCookies(webView, true) // Vimeo embeds run in a third-party iframe
         }
         val context = webView.context
-        webView.addJavascriptInterface(MediaHub.JsBridge, "AAMedia")
+        Progress.init(context)
+        webView.addJavascriptInterface(MediaHub.Bridge(webView), "AAMedia")
         webView.addJavascriptInterface(SkipSilence.bridge(context), "AASkip")
         MediaHub.register(webView)
         interceptServiceWorkers(context)
@@ -100,6 +101,7 @@ object Web {
 
             // Also fires for in-page navigation (history.pushState), which YouTube uses.
             override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
+                MediaHub.pageChanged(view)
                 if (url != null) onUrlChanged?.invoke(url)
             }
 
@@ -112,6 +114,55 @@ object Web {
             }
         }
     }
+
+    /**
+     * Opens [entry]'s page in [webView] and plays its video from where it was left off. Repeated for a while: the
+     * page and its (lazily loaded) player take time to appear. Stops once the video plays.
+     */
+    fun continueVideo(webView: WebView, entry: Progress.Entry) {
+        if (webView.url != entry.pageUrl) webView.loadUrl(entry.pageUrl)
+        val js = revealJs(entry.key) +
+            "window.__aaMedia && window.__aaMedia('*', ${org.json.JSONObject.quote("playat:${entry.key}|${entry.positionS}")});"
+        repeat(CONTINUE_TRIES) { i ->
+            webView.postDelayed({
+                val now = MediaHub.current
+                if (now == null || now.key != entry.key || !now.playing) webView.evaluateJavascript(js, null)
+            }, (i + 1) * 1000L)
+        }
+        DiagLog.add("continue ${entry.key} at ${entry.positionS} s on ${entry.pageUrl}")
+    }
+
+    private const val CONTINUE_TRIES = 15
+
+    /** Scrolls to the player of video [key] and loads it (see VIMEO_HELPER_JS, which loads players lazily). */
+    fun revealJs(key: String) = """
+(function (K) {
+  document.querySelectorAll('iframe').forEach(function (f) {
+    if ((f.dataset.aaSrc || f.src || '').indexOf(K) < 0) return;
+    if (!f.__aaRevealed) { f.__aaRevealed = true; f.scrollIntoView({ block: 'center' }); }
+    if (f.dataset.aaSrc && f.getAttribute('src') !== f.dataset.aaSrc) f.setAttribute('src', f.dataset.aaSrc);
+  });
+})(${org.json.JSONObject.quote(key)});
+"""
+
+    /**
+     * Ticks "Als erledigt markieren" of the course module holding video [key]'s player, once it has been watched.
+     * Only that label: the button toggles, and "Erledigt" would undo it.
+     */
+    fun markDoneJs(key: String) = """
+(function (K) {
+  document.querySelectorAll('iframe').forEach(function (f) {
+    if ((f.dataset.aaSrc || f.src || '').indexOf(K) < 0) return;
+    for (var el = f.parentElement; el; el = el.parentElement) {
+      if (el.querySelectorAll('iframe').length > 1) return; // reached the list: other modules' buttons
+      var b = Array.prototype.find.call(el.querySelectorAll('[role=button],button'), function (x) {
+        return x.textContent.trim() === 'Als erledigt markieren';
+      });
+      if (b) { b.click(); console.log('[aa] marked done ' + K); return; }
+    }
+  });
+})(${org.json.JSONObject.quote(key)});
+"""
 
     private var serviceWorkersIntercepted = false
 
@@ -204,6 +255,7 @@ object Web {
     if (!el) return;
     AAMedia.update(id, JSON.stringify({
       playing: !el.paused && !el.ended,
+      ended: el.ended,
       title: meta('title') || document.title || '',
       artist: meta('artist') || location.hostname.replace(/^www\./, ''),
       position: el.currentTime || 0,
@@ -211,10 +263,19 @@ object Web {
       key: key()
     }));
   }
+  // Continue where this video was left off (see Progress), once per video and element.
+  function resume(el) {
+    var k = key();
+    if (!k || el.__aaResumed === k || !(el.duration > 0)) return;
+    el.__aaResumed = k;
+    var t = AAMedia.resumeAt(k);
+    if (t > 0 && el.currentTime < t - 5 && t < el.duration) el.currentTime = t;
+  }
   ['play', 'playing', 'pause', 'ended', 'seeked', 'loadedmetadata'].forEach(function (type) {
     document.addEventListener(type, function (e) {
       var el = e.target;
       if (!(el instanceof HTMLMediaElement)) return;
+      if (type === 'loadedmetadata' || type === 'play') resume(el);
       if (type === 'play' || type === 'playing' || !current) current = el;
       if (el === current) report();
     }, true);

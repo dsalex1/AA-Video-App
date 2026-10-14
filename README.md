@@ -23,6 +23,10 @@ videos, parked or driving (intended for passengers).
 - Pages always see themselves as visible, and a foreground service keeps the app alive, so YouTube and
   Vimeo keep playing in the background / with the screen off.
 - Pull down on the phone to reload the page.
+- **Continue watching** (`Progress`): every video's position is saved while it plays; opening it again starts
+  there. The ⟲ button (phone: bottom row, car: top right) reopens the last unfinished video's page and plays it
+  from where it stopped. Near the end (last 20 s) a video counts as watched: its position is dropped and its
+  course module gets "Als erledigt markieren" ticked.
 - Media notification / lock-screen controls (title, play/pause, −10 s / +30 s, seek bar) for whatever plays in any
   page or embedded player; also reacts to headset and steering-wheel media buttons.
 - **Skip Silence**: the [Skip Silence](https://github.com/vantezzen/skip-silence) browser extension (MIT) runs in

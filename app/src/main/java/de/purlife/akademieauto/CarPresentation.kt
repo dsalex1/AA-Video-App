@@ -27,6 +27,7 @@ class CarPresentation(
     display: Display,
     private val initialSite: Site,
     private val onSwitchSite: () -> Unit,
+    private val onContinue: () -> Unit,
     private val onPageChanged: () -> Unit,
 ) :
     Presentation(outerContext, display, android.R.style.Theme_Material_NoActionBar_Fullscreen) {
@@ -40,11 +41,18 @@ class CarPresentation(
     private var customViewCallback: android.webkit.WebChromeClient.CustomViewCallback? = null
     private lateinit var buttons: LinearLayout
     private lateinit var siteButton: ImageButton
+    private lateinit var resumeButton: ImageButton
+
+    /** Shown while there is an unfinished video that isn't the one playing. */
+    private val updateResumeButton = {
+        resumeButton.visibility = if (Progress.isResumable()) View.VISIBLE else View.GONE
+    }
     private val hideButtons = Runnable { buttons.animate().alpha(0f) }
     private var videoFullscreen = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Progress.init(context)
         root = FrameLayout(context).apply { setBackgroundColor(Color.BLACK) }
         content = FrameLayout(context)
         webView = BackgroundWebView(context)
@@ -52,6 +60,8 @@ class CarPresentation(
         // Android Auto's content card sits top left; the page starts halfway down it and the buttons.
         root.addView(content, matchParent().apply { topMargin = dp(TOP_DP) })
         buttons = LinearLayout(context).apply {
+            resumeButton = roundButton(R.drawable.ic_resume) { onContinue() }
+            addView(resumeButton)
             addView(roundButton(R.drawable.ic_forward) { toggleSkipSilenceSettings() })
             siteButton = roundButton(0) { onSwitchSite() }
             addView(siteButton)
@@ -61,6 +71,9 @@ class CarPresentation(
             marginEnd = dp(8)
         })
         setSite(initialSite)
+        Progress.addListener(updateResumeButton)
+        MediaHub.addListener(updateResumeButton)
+        updateResumeButton()
         setContentView(root)
 
         Web.configure(webView)
@@ -159,6 +172,8 @@ class CarPresentation(
     }
 
     fun destroy() {
+        Progress.removeListener(updateResumeButton)
+        MediaHub.removeListener(updateResumeButton)
         settingsView?.let(SkipSilence::closeSettings)
         webView.destroy()
         dismiss()

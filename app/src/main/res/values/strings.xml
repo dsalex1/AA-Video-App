@@ -5,6 +5,7 @@
     <string name="skip_silence">Skip Silence</string>
     <string name="car_text">Titel im Auto ein/aus</string>
     <string name="car_still">Videobild im Auto ein/aus</string>
+    <string name="resume">Zuletzt gesehenes Video fortsetzen</string>
     <!-- Separate launcher entries in Android Auto (it merges unnamed car components of one app). -->
     <string name="car_media_label">Akademie Video</string>
     <string name="car_browser_label">Akademie Web</string>

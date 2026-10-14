@@ -46,7 +46,7 @@ class WebSurfaceRenderer(private val context: Context) : SurfaceCallback, CarSyn
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_PRESENTATION or DisplayManager.VIRTUAL_DISPLAY_FLAG_OWN_CONTENT_ONLY,
             )
             virtualDisplay = display
-            presentation = CarPresentation(context, display.display, site, ::switchSite) {
+            presentation = CarPresentation(context, display.display, site, ::switchSite, ::continueLast) {
                 presentation?.setSite(pageSite)
                 onPageChanged?.invoke()
             }.also { it.show() }
@@ -91,14 +91,25 @@ class WebSurfaceRenderer(private val context: Context) : SurfaceCallback, CarSyn
      * Shows the phone's video full screen and continues it. Repeated for a while: right after [load] the page or
      * the (lazily loaded) player may not exist yet.
      */
-    override fun showVideo(key: String, positionS: Double) {
+    override fun showVideo(key: String, positionS: Double) = playVideo(key, positionS, live = true)
+
+    /** The last unfinished video (see [Progress]): its page, full screen, from where it was left off. */
+    fun continueLast() {
+        val entry = Progress.last ?: return
+        load(entry.pageUrl)
+        playVideo(entry.key, entry.positionS, live = false)
+    }
+
+    /** [live]: the video kept playing elsewhere meanwhile (on the phone), so the position moves on. */
+    private fun playVideo(key: String, positionS: Double, live: Boolean) {
         DiagLog.add("car: show video $key at $positionS s")
         setFullscreen(true, key)
         val start = SystemClock.elapsedRealtime()
         repeat(RETRIES) { i ->
             HandlerCompat.postDelayed(main, {
                 val p = presentation ?: return@postDelayed
-                val at = positionS + (SystemClock.elapsedRealtime() - start) / 1000.0
+                if (MediaHub.current?.let { it.key == key && it.playing } == true) return@postDelayed
+                val at = positionS + if (live) (SystemClock.elapsedRealtime() - start) / 1000.0 else 0.0
                 p.setVideoFullscreen(true, key)
                 p.webView.evaluateJavascript(
                     "window.__aaMedia && window.__aaMedia('*', ${org.json.JSONObject.quote("playat:$key|$at")})", null
